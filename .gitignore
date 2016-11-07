@@ -11,3 +11,8 @@ tweet.png
 #ignore my enviromental variables:
 py3/
 __pycache__/
+
+#ignore other things that happen to be there:
+.DS_Store
+._.DS_Store
+
