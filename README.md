@@ -27,6 +27,6 @@
  * Some even more future day use OpenCV to video detect and track airplanes.
 
 ## Dependencies
-* Uses [dump1090-mutability](https://github.com/mutability/dump1090) for ADSB message encoding, airplane tracking, and webserving.
+* Uses [dump1090-mutability](https://github.com/mutability/dump1090) for ADSB message decoding, airplane tracking, and webserving.
 * Uses [twitter](https://pypi.python.org/pypi/twitter) for tweeting.
 * Uses [selenium](https://pypi.python.org/pypi/selenium) with [PhantomJS](http://phantomjs.org/) for capturing screenshots.
