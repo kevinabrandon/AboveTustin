@@ -1,7 +1,7 @@
 # AboveTustin
 [AboveTustin](https://twitter.com/abovetustin) is an ADS-B Twitter Bot running on a Raspberry Pi 2.  It tracks airplanes and then tweets whenever an airplane flies overhead.
 
- * Uses [dump1090-mutability](https://github.com/mutability/dump1090)
+ * Uses [dump1090-mutability](https://github.com/mutability/dump1090) for ADSB message decoding, airplane tracking, and webserving.
  * It tweets an image of a map with the airplane's track.
  * It displays the flight name if available, or the reported icao code.
  * It displays altitude, ground speed and heading information of the airplane at it's closest point to the bot.
