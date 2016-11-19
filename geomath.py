@@ -39,6 +39,8 @@ def bearing(pointA, pointB):
 	"""
 	Calculates the bearing between two points.
 
+	Found here: https://gist.github.com/jeromer/2005586
+
 	The formulae used is the following:
 	    θ = atan2(sin(Δlong).cos(lat2),
 	              cos(lat1).sin(lat2) − sin(lat1).cos(lat2).cos(Δlong))
