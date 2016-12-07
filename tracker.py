@@ -18,7 +18,7 @@ parser.read('config.ini')
 # Assign AboveTustin variables.
 abovetustin_distance_alarm = int(parser.get('abovetustin', 'distance_alarm'))	# The alarm distance in miles.
 abovetustin_elevation_alarm = int(parser.get('abovetustin', 'elevation_alarm'))	# The angle in degrees that indicates if the airplane is overhead or not.
-abovetustin_wait_x_updates = int(parser.get('abovetustin', 'wait_count'))	# Number of updates to wait after the airplane has left the alarm zone before tweeting.
+abovetustin_wait_x_updates = int(parser.get('abovetustin', 'wait_x_updates'))	# Number of updates to wait after the airplane has left the alarm zone before tweeting.
 abovetustin_sleep_time = float(parser.get('abovetustin', 'sleep_time'))		# Time between each loop.
 
 # Assign Twitter variables.
