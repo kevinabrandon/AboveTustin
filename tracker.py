@@ -25,6 +25,14 @@ token = loadKeyFile('keys/token')
 token_secret = loadKeyFile('keys/token_secret')
 consumer_key = loadKeyFile('keys/consumer_key')
 consumer_secret = loadKeyFile('keys/consumer_secret')
+
+# Remove any extra spaces or carriage returns that may have made there way into the key files.
+# These lines would only be needed up until the point these keys are moved into a configuration file.
+token = token.replace('\n', ' ').replace('\r', '').strip()
+token_secret = token_secret.replace('\n', ' ').replace('\r', '').strip()
+consumer_key = consumer_key.replace('\n', ' ').replace('\r', '').strip()
+consumer_secret = consumer_secret.replace('\n', ' ').replace('\r', '').strip()
+
 twit = Twitter(auth=(OAuth(token, token_secret, consumer_key, consumer_secret)))
 
 # Given an aircraft 'a' tweet.  
