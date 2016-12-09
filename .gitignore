@@ -2,6 +2,9 @@
 logs/
 keys/
 
+#ignore the file config.ini:
+config.ini
+
 #ignore tweet.png the image it saves on each tweet:
 tweet.png
 

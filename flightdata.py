@@ -24,14 +24,25 @@ import geomath
 import math
 from datetime import datetime
 from dateutil import tz
+from configparser import ConfigParser
 
-DUMP1090DATAURL = "http://192.168.0.101/dump1090/data/aircraft.json"
-myLoc = (33.754271, -117.823096)
-myTz = tz.gettz('America/Los_Angeles')
-utcTz = tz.gettz('UTC')
+# Read the configuration file for this application.
+parser = ConfigParser()
+parser.read('config.ini')
+
+# Assign dump1090 variables.
+dump1090_data_url = parser.get('dump1090', 'data_url')
+
+# Assign receiver variables.
+receiver_latitude = float(parser.get('receiver', 'latitude'))
+receiver_longitude = float(parser.get('receiver', 'longitude'))
+receiver_time_zone = tz.gettz(parser.get('receiver', 'time_zone'))
+
+# Other variables used by this script.
+utc_time_zone = tz.gettz('UTC')
 
 class FlightData():
-    def __init__(self, data_url = DUMP1090DATAURL):
+    def __init__(self, data_url = dump1090_data_url):
 
         self.data_url = data_url
         self.aircraft = None
@@ -50,8 +61,8 @@ class FlightData():
 
         #get time from json and convert to our time zone
         self.time = datetime.fromtimestamp(self.json_data["now"])
-        self.time = self.time.replace(tzinfo=utcTz)
-        self.time = self.time.astimezone(myTz)
+        self.time = self.time.replace(tzinfo=utc_time_zone)
+        self.time = self.time.astimezone(receiver_time_zone)
 
         #load all the aircarft
         self.aircraft = AirCraftData.parse_flightdata_json(self.json_data, self.time)
@@ -110,8 +121,8 @@ class AirCraftData():
             az = 0
             el = 0
             if "lat" in a and "lon" in a:
-                dist = geomath.distance(myLoc, (a["lat"], a["lon"]))
-                az = geomath.bearing(myLoc, (a["lat"], a["lon"]))
+                dist = geomath.distance((receiver_latitude, receiver_longitude), (a["lat"], a["lon"]))
+                az = geomath.bearing((receiver_latitude, receiver_longitude), (a["lat"], a["lon"]))
                 el = math.degrees(math.atan(alt / (dist*5280)))
             speed = 0
             if "speed" in a:

@@ -9,31 +9,26 @@ from time import sleep
 from twitter import *
 import flightdata
 import screenshot
+from configparser import ConfigParser
 
-distanceAlarm = 1 	# the alarm distance in miles.
-elevationAlarm = 50 # the angle in degrees that indicates if the airplane is overhead or not.
-nCoast = 5			# number of updates to wait after the airplane has left the alarm zone before tweeting.
-sleepTime = 0.5 	# time between each loop.
+# Read the configuration file for this application.
+parser = ConfigParser()
+parser.read('config.ini')
 
-# simple routine to read in the key files
-def loadKeyFile(name):
-	with open(name, 'r') as keyfile:
-		return keyfile.read()
+# Assign AboveTustin variables.
+abovetustin_distance_alarm = int(parser.get('abovetustin', 'distance_alarm'))	# The alarm distance in miles.
+abovetustin_elevation_alarm = int(parser.get('abovetustin', 'elevation_alarm'))	# The angle in degrees that indicates if the airplane is overhead or not.
+abovetustin_wait_x_updates = int(parser.get('abovetustin', 'wait_x_updates'))	# Number of updates to wait after the airplane has left the alarm zone before tweeting.
+abovetustin_sleep_time = float(parser.get('abovetustin', 'sleep_time'))		# Time between each loop.
 
-# read all 4 key files and login to twitter
-token = loadKeyFile('keys/token')
-token_secret = loadKeyFile('keys/token_secret')
-consumer_key = loadKeyFile('keys/consumer_key')
-consumer_secret = loadKeyFile('keys/consumer_secret')
+# Assign Twitter variables.
+twitter_consumer_key = parser.get('twitter', 'consumer_key')
+twitter_consumer_secret = parser.get('twitter', 'consumer_secret')
+twitter_access_token = parser.get('twitter', 'access_token')
+twitter_access_token_secret = parser.get('twitter', 'access_token_secret')
 
-# Remove any extra spaces or carriage returns that may have made there way into the key files.
-# These lines would only be needed up until the point these keys are moved into a configuration file.
-token = token.replace('\n', ' ').replace('\r', '').strip()
-token_secret = token_secret.replace('\n', ' ').replace('\r', '').strip()
-consumer_key = consumer_key.replace('\n', ' ').replace('\r', '').strip()
-consumer_secret = consumer_secret.replace('\n', ' ').replace('\r', '').strip()
-
-twit = Twitter(auth=(OAuth(token, token_secret, consumer_key, consumer_secret)))
+# Login to twitter.
+twit = Twitter(auth=(OAuth(twitter_access_token, twitter_access_token_secret, twitter_consumer_key, twitter_consumer_secret)))
 
 # Given an aircraft 'a' tweet.  
 # If we have a screenshot, upload it to twitter with the tweet.
@@ -105,7 +100,7 @@ def Tweet(a, havescreenshot):
 
 	# send tweet to twitter!
 	if havescreenshot:
-		with open('/home/pi/AboveTustin/tweet.png', "rb") as imagefile:
+		with open('tweet.png', "rb") as imagefile:
 			imagedata = imagefile.read()
 		params = {"media[]": imagedata, "status": tweet}
 		twit.statuses.update_with_media(**params)
@@ -128,14 +123,14 @@ if __name__ == "__main__":
 	                # Indexed by it's hex code, each entry contains a tuple of
 			# the aircraft data at the closest position so far, and a 
 			# counter.  Once the airplane is out of the alarm zone,
-			# the counter is incremented until we hit [nCoast] (defined
-			# above), at which point we then Tweet
+			# the counter is incremented until we hit [abovetustin_wait_x_updates]
+                        # (defined above), at which point we then Tweet
 
 	fd = flightdata.FlightData()
 	lastTime = fd.time
 
 	while True:
-		sleep(sleepTime)
+		sleep(abovetustin_sleep_time)
 		fd.refresh()
 		if fd.time == lastTime:
 			continue
@@ -152,7 +147,7 @@ if __name__ == "__main__":
 				continue
 
 			# check to see if it's in the alarm zone:
-			if a.distance < distanceAlarm or a.el > elevationAlarm:
+			if a.distance < abovetustin_distance_alarm or a.el > abovetustin_elevation_alarm:
 
 				# add it to the current dictionary
 				current[a.hex] = a 
@@ -182,7 +177,7 @@ if __name__ == "__main__":
 					break
 			# if it wasn't in the current set of aircraft, that means it's time to tweet!
 			if not found:
-				if a[1] < nCoast:
+				if a[1] < abovetustin_wait_x_updates:
 					alarms[h] = (a[0], a[1]+1)
 				else:				
 					havescreenshot = False

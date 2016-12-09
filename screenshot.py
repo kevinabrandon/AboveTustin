@@ -6,11 +6,23 @@
 
 import sys
 import time
-
 from selenium import webdriver
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
+from configparser import ConfigParser
+
+# Read the configuration file for this application.
+parser = ConfigParser()
+parser.read('config.ini')
+
+# Assign AboveTustin variables.
+abovetustin_image_width = int(parser.get('abovetustin', 'image_width'))
+abovetustin_image_height = int(parser.get('abovetustin', 'image_height'))
+
+# Assign dump1090 variables.
+dump1090_map_url = parser.get('dump1090', 'map_url')
+dump1090_request_timeout = int(parser.get('dump1090', 'request_timeout'))
 
 def loadmap():
     '''
@@ -23,13 +35,13 @@ def loadmap():
     try:
         browser = webdriver.PhantomJS()
 
-        browser.set_window_size(1280,720)
+        browser.set_window_size(abovetustin_image_width, abovetustin_image_height)
 
         print ("getting web page...")
-        browser.get("http://localhost/dump1090/gmap.html")
+        browser.get(dump1090_map_url)
 
         # Need to wait for the page to load
-        timeout = 20
+        timeout = dump1090_request_timeout
         print ("waiting for page to load...")
         wait = WebDriverWait(browser, timeout)
         element = wait.until(EC.element_to_be_clickable((By.ID,'dump1090_version')))
@@ -77,7 +89,7 @@ def clickOnAirplane(browser, text):
             print("click!")
             element[0].click()
             time.sleep(0.5) # if we don't wait a little bit the airplane icon isn't drawn.
-            screenshot(browser, '/home/pi/AboveTustin/tweet.png')
+            screenshot(browser, 'tweet.png')
             return True
         else:
             print("couldn't find the object")
