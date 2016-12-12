@@ -10,6 +10,7 @@ from twitter import *
 import flightdata
 import screenshot
 from configparser import ConfigParser
+from string import Template
 
 # Read the configuration file for this application.
 parser = ConfigParser()
@@ -53,6 +54,27 @@ def Tweet(a, havescreenshot):
 		elif a.track >= 292.5 and a.track < 337.5:
 			direction = "NW"
 
+	# compile the template arguments
+	templateArgs = dict()
+	templateArgs['flight'] = a.flight
+	if templateArgs['flight'] == 'N/A':
+		templateArgs['flight'] = a.hex
+	templateArgs['flight'] = templateArgs['flight'].replace(" ", "")
+	templateArgs['icao'] = a.hex
+	templateArgs['icao'] = templateArgs['icao'].replace(" ", "")
+	templateArgs['dist'] = "%.1f" % a.distance
+	templateArgs['alt'] = a.altitude
+	templateArgs['el'] = "%.1f" % a.el
+	templateArgs['az'] = "%.1f" % a.az
+	templateArgs['heading'] = direction
+	templateArgs['speed'] = "%.1f" % a.speed
+	templateArgs['time'] = a.time.strftime('%H:%M:%S')
+	templateArgs['squawk'] = a.squawk
+	templateArgs['vert_rate'] = a.vert_rate
+	templateArgs['rssi'] = a.rssi
+
+	tweet = Template(parser.get('tweet', 'tweet_template')).substitute(templateArgs)
+
 	#conditional hashtags:
 	hashtags = []
 	if a.time.hour < 7 or a.time.hour >= 23 or (a.time.weekday() == 7 and a.time.hour < 8):
@@ -71,32 +93,16 @@ def Tweet(a, havescreenshot):
 		hashtags.append(" #FlyingFast")
 	if a.speed >= 700:
 		hashtags.append(" #SpeedDemon")
-	hashtags.append(" #AboveTustin")
-	hashtags.append(" #RaspberryPi")
-	hashtags.append(" #ADSB")
-	hashtags.append(" #dump1090")
 
-	#use the flight number if we have it, otherwise use the hex code
-	flight = a.flight
-	if flight == 'N/A':
-		flight = h
-	flight = flight.replace(" ", "")
-
-	# create the text part of the tweet
-	tweet = "{}:{}mi away @ {}ft and {}° frm hrzn, heading {}@ {}mi/h {}.".format(
-		flight,
-		"%.1f" % a.distance,
-		a.altitude,
-		"%.1f" % a.el,
-		direction,
-		"%.1f" % a.speed,
-		a.time.strftime('%H:%M:%S')
-		)
-
-	# add the hashtag as long as there is room in 140 chars
+	# add the conditional hashtags as long as there is room in 140 chars
 	for hash in hashtags: 
 		if len(tweet) + len(hash) <= 140: 
 			tweet += hash
+
+	# add the default hashtags as long as there is room
+	for hash in parser.get('tweet', 'default_hashtags').split(' '):
+		if len(tweet) + len(hash) <= 139:
+			tweet += " " + hash
 
 	# send tweet to twitter!
 	if havescreenshot:
