@@ -8,6 +8,31 @@
 
 import math
 
+def HeadingStr(heading):
+	"""
+	Gives a heading string given the heading float
+	"""
+	headstr = "?"
+	if heading != None:
+		if heading < 22.5 or heading >= 337.5:
+			headstr = "N"
+		elif heading >=22.5 and heading < 67.5:
+			headstr = "NE"
+		elif heading >= 67.5 and heading < 112.5:
+			headstr = "E"
+		elif heading >= 112.5 and heading < 157.5:
+			headstr = "SE"
+		elif heading >= 157.5 and heading < 202.5:
+			headstr = "S"
+		elif heading >= 202.5 and heading < 247.5:
+			headstr = "SW"
+		elif heading >= 247.5 and heading < 292.5:
+			headstr = "W"
+		elif heading >= 292.5 and heading < 337.5:
+			headstr = "NW"
+	return headstr
+
+
 def knot2mph(k):
 	"""
 	Converts knots to miles per hour.

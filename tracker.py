@@ -11,6 +11,7 @@ import flightdata
 import screenshot
 from configparser import ConfigParser
 from string import Template
+import geomath
 
 # Read the configuration file for this application.
 parser = ConfigParser()
@@ -34,26 +35,6 @@ twit = Twitter(auth=(OAuth(twitter_access_token, twitter_access_token_secret, tw
 # Given an aircraft 'a' tweet.  
 # If we have a screenshot, upload it to twitter with the tweet.
 def Tweet(a, havescreenshot):
-	# find the direction the airplane is heading
-	direction = "?"
-	if a.track != None:
-		if a.track < 22.5 or a.track >= 337.5:
-			direction = "N"
-		elif a.track >=22.5 and a.track < 67.5:
-			direction = "NE"
-		elif a.track >= 67.5 and a.track < 112.5:
-			direction = "E"
-		elif a.track >= 112.5 and a.track < 157.5:
-			direction = "SE"
-		elif a.track >= 157.5 and a.track < 202.5:
-			direction = "S"
-		elif a.track >= 202.5 and a.track < 247.5:
-			direction = "SW"
-		elif a.track >= 247.5 and a.track < 292.5:
-			direction = "W"
-		elif a.track >= 292.5 and a.track < 337.5:
-			direction = "NW"
-
 	# compile the template arguments
 	templateArgs = dict()
 	templateArgs['flight'] = a.flight
@@ -66,7 +47,7 @@ def Tweet(a, havescreenshot):
 	templateArgs['alt'] = a.altitude
 	templateArgs['el'] = "%.1f" % a.el
 	templateArgs['az'] = "%.1f" % a.az
-	templateArgs['heading'] = direction
+	templateArgs['heading'] = geomath.HeadingStr(a.track)
 	templateArgs['speed'] = "%.1f" % a.speed
 	templateArgs['time'] = a.time.strftime('%H:%M:%S')
 	templateArgs['squawk'] = a.squawk
