@@ -142,8 +142,8 @@ if __name__ == "__main__":
 
 		# loop on all the aircarft in the receiver
 		for a in fd.aircraft:
-			# if they don't have lat/lon skip them
-			if a.lat == None or a.lon == None: 
+			# if they don't have lat/lon or a heading skip them
+			if a.lat == None or a.lon == None or a.track == None:
 				continue
 
 			# check to see if it's in the alarm zone:
