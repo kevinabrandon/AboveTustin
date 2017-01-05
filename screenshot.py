@@ -31,10 +31,10 @@ if parser.has_section('crop'):
         try:
             from PIL import Image
             from io import BytesIO
+            print('will crop')
         except ImportError:
             print('Image manipulation module "Pillow" not found, cropping disabled')
             do_crop = False
-        print('will crop')
 else:
     do_crop = False
 
