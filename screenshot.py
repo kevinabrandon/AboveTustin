@@ -23,6 +23,8 @@ abovetustin_image_height = int(parser.get('abovetustin', 'image_height'))
 #  Check for Crop settings
 if parser.has_section('crop'):
     do_crop = parser.getboolean('crop', 'do_crop')
+    crop_x = parser.getint('crop', 'crop_x')
+    crop_y = parser.getint('crop', 'crop_y')
     crop_width = parser.getint('crop', 'crop_width')
     crop_height = parser.getint('crop', 'crop_height')
     if do_crop:
@@ -93,7 +95,7 @@ def screenshot(browser, name):
             im = Image.open(BytesIO(im))
 
             #  Crop to specifications
-            im = im.crop((0,0, crop_width, crop_height))
+            im = im.crop((crop_x, crop_y, crop_width, crop_height))
             im.save(name)
         else:
             browser.save_screenshot(name)
