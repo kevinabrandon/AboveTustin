@@ -20,14 +20,30 @@ parser.read('config.ini')
 abovetustin_image_width = int(parser.get('abovetustin', 'image_width'))
 abovetustin_image_height = int(parser.get('abovetustin', 'image_height'))
 
+#  Check for Crop settings
+if parser.has_section('crop'):
+    do_crop = parser.getboolean('crop', 'do_crop')
+    crop_width = parser.getint('crop', 'crop_width')
+    crop_height = parser.getint('crop', 'crop_height')
+    if do_crop:
+        try:
+            from PIL import Image
+            from io import BytesIO
+        except ImportError:
+            print('Image manipulation module "Pillow" not found, cropping disabled')
+            do_crop = False
+        print('will crop')
+else:
+    do_crop = False
+
 # Assign dump1090 variables.
 dump1090_map_url = parser.get('dump1090', 'map_url')
 dump1090_request_timeout = int(parser.get('dump1090', 'request_timeout'))
 
 def loadmap():
     '''
-    loadmap() 
-    Creates a browser object and loads the webpage.  
+    loadmap()
+    Creates a browser object and loads the webpage.
     It sets up the map to the proper zoom level.
 
     Returns the browser on success, None on fail.
@@ -45,11 +61,11 @@ def loadmap():
         print ("waiting for page to load...")
         wait = WebDriverWait(browser, timeout)
         element = wait.until(EC.element_to_be_clickable((By.ID,'dump1090_version')))
-    
+
         print("reset map:")
         resetbutton = browser.find_elements_by_xpath("//*[contains(text(), 'Reset Map')]")
         resetbutton[0].click()
-        
+
         print("zoom in 4 times:")
         zoomin = browser.find_element_by_class_name('ol-zoom-in')
         zoomin.click()
@@ -70,8 +86,18 @@ def screenshot(browser, name):
     Takes a screenshot of the browser
     '''
     try:
-        browser.save_screenshot(name)
-        print("suucess saving screnshot: %s" % name)
+        if do_crop:
+            print('cropping screenshot')
+            #  Grab screenshot rather than saving
+            im = browser.get_screenshot_as_png()
+            im = Image.open(BytesIO(im))
+
+            #  Crop to specifications
+            im = im.crop((0,0, crop_width, crop_height))
+            im.save(name)
+        else:
+            browser.save_screenshot(name)
+        print("success saving screnshot: %s" % name)
     except:
         print("exception in screenshot()")
         print(sys.exc_info()[0])
@@ -98,4 +124,3 @@ def clickOnAirplane(browser, text):
         print (sys.exc_info()[0])
 
     return False
-
