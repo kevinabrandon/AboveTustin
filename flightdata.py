@@ -154,14 +154,12 @@ class AirCraftData():
 
 
 if __name__ == "__main__":
-    
     import os
-    import datetime
 
     flightdata = FlightData()
     while True:
         os.system('clear')
-        print("Now: {}".format(datetime.datetime.fromtimestamp(int(flightdata.time)).strftime('%Y-%m-%d %H:%M:%S')))
+        print("Now: {}".format(flightdata.time.strftime('%Y-%m-%d %H:%M:%S')))
         print("|  icao   | flight  | miles |   az  |  el  |  alt  | mi/h  | vert  | rssi  | mesgs | seen |")
         print("|---------+---------+-------+-------+------+-------+-------+-------+-------+-------+------|")
         sortedlist = []
