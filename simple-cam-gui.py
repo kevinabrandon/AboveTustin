@@ -87,7 +87,7 @@ def get_target_point_int(loc, fov, size):
 def size_of_radius(a):
 	max_radius = 1
 	min_radius = 30
-	max_distance = 100
+	max_distance = 10
 	min_distance = 1
 	d = a.distance
 	if d > max_distance:
@@ -101,15 +101,16 @@ def size_of_radius(a):
 #some consts values we'll be using
 green = (0, 255, 0)
 font = cv2.FONT_HERSHEY_SIMPLEX
-font_sz = 0.33
+font_sz = 0.75
 
 # create the named window and the trackbars...
 winName = 'AboveTustin'
-cv2.namedWindow(winName)
+cv2.namedWindow(winName, cv2.WINDOW_NORMAL)
 cv2.createTrackbar('fov_horz', winName, int(cam_horz), 180, nothing)
 cv2.createTrackbar('fov_vert', winName, int(cam_vert), 180, nothing)
 cv2.createTrackbar('orient_az', winName, int(cam_az), 360, nothing)
 cv2.createTrackbar('orient_el', winName, int(cam_el), 360, nothing)
+cv2.createTrackbar('max_dist', winName, 20, 150, nothing)
 
 # open the camera
 cap = cv2.VideoCapture(cam_url)
@@ -155,6 +156,8 @@ while(cap.isOpened()):
 	el = cv2.getTrackbarPos('orient_el', winName)
 	orient = (az,el)
 
+	max_dist = cv2.getTrackbarPos('max_dist', winName)
+
 	# see if we need to update the flight data:
 	if time_since(last_fd_update_tick, tick) >= time_between_updates:
 		aircraft_in_fov.clear()         # clear the dictionary
@@ -170,6 +173,9 @@ while(cap.isOpened()):
 			if a.lat == None or a.lon == None:
 				continue
 			if a.altitude == None or a.altitude == 0:
+				continue
+
+			if a.distance > max_dist:
 				continue
 
 			# check to see if it's the fov the camera and the distace isn't too far:
