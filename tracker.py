@@ -12,6 +12,7 @@ import screenshot
 from configparser import ConfigParser
 from string import Template
 import geomath
+import fa_api
 
 # Read the configuration file for this application.
 parser = ConfigParser()
@@ -22,6 +23,10 @@ abovetustin_distance_alarm = int(parser.get('abovetustin', 'distance_alarm'))	# 
 abovetustin_elevation_alarm = int(parser.get('abovetustin', 'elevation_alarm'))	# The angle in degrees that indicates if the airplane is overhead or not.
 abovetustin_wait_x_updates = int(parser.get('abovetustin', 'wait_x_updates'))	# Number of updates to wait after the airplane has left the alarm zone before tweeting.
 abovetustin_sleep_time = float(parser.get('abovetustin', 'sleep_time'))		# Time between each loop.
+
+# Assign FlightAware variables.
+fa_username = parser.get('flightaware', 'fa_username')
+fa_api_key = parser.get('flightaware', 'fa_api_key')
 
 # Assign Twitter variables.
 twitter_consumer_key = parser.get('twitter', 'consumer_key')
@@ -53,6 +58,17 @@ def Tweet(a, havescreenshot):
 	templateArgs['squawk'] = a.squawk
 	templateArgs['vert_rate'] = a.vert_rate
 	templateArgs['rssi'] = a.rssi
+	if faInfo:
+		templateArgs['orig_name'] = faInfo['orig_name']
+		templateArgs['dest_name'] = faInfo['dest_name']
+		if faInfo['orig_alt']:
+			templateArgs['orig_alt'] = faInfo['orig_alt']
+		else:
+			templateArgs['orig_alt'] = faInfo['orig_code']
+		if faInfo['dest_alt']:
+			templateArgs['dest_alt'] = faInfo['dest_alt']
+		else:
+			templateArgs['dest_alt'] = faInfo['dest_code']
 
 	tweet = Template(parser.get('tweet', 'tweet_template')).substitute(templateArgs)
 
@@ -107,11 +123,11 @@ if __name__ == "__main__":
 		print("browser loaded!")
 
 	alarms = dict() # dictonary of all aircraft that have triggered the alarm
-	                # Indexed by it's hex code, each entry contains a tuple of
+			# Indexed by it's hex code, each entry contains a tuple of
 			# the aircraft data at the closest position so far, and a 
 			# counter.  Once the airplane is out of the alarm zone,
 			# the counter is incremented until we hit [abovetustin_wait_x_updates]
-                        # (defined above), at which point we then Tweet
+			# (defined above), at which point we then Tweet
 
 	fd = flightdata.FlightData()
 	lastTime = fd.time
@@ -175,6 +191,9 @@ if __name__ == "__main__":
 						hexcode = hexcode.replace("~", "")
 
 						havescreenshot = screenshot.clickOnAirplane(browser, hexcode)
+
+					print("Getting FlightAware flight details")
+					faInfo = fa_api.FlightInfo(a[0].flight, fa_username, fa_api_key)
 
 					print("time to tweet!!!!!")
 					
