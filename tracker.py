@@ -25,6 +25,7 @@ abovetustin_wait_x_updates = int(parser.get('abovetustin', 'wait_x_updates'))	# 
 abovetustin_sleep_time = float(parser.get('abovetustin', 'sleep_time'))		# Time between each loop.
 
 # Assign FlightAware variables.
+fa_enable = parser.get('flightaware', 'fa_enable')
 fa_username = parser.get('flightaware', 'fa_username')
 fa_api_key = parser.get('flightaware', 'fa_api_key')
 
@@ -69,8 +70,10 @@ def Tweet(a, havescreenshot):
 			templateArgs['dest_alt'] = faInfo['dest_alt']
 		else:
 			templateArgs['dest_alt'] = faInfo['dest_code']
-
-	tweet = Template(parser.get('tweet', 'tweet_template')).substitute(templateArgs)
+	if templateArgs['orig_alt'] and templateArgs['dest_alt'] and fa_enable:
+		tweet = Template(parser.get('tweet', 'fa_tweet_template')).substitute(templateArgs)
+	else:
+		tweet = Template(parser.get('tweet', 'tweet_template')).substitute(templateArgs)
 
 	#conditional hashtags:
 	hashtags = []
@@ -192,8 +195,9 @@ if __name__ == "__main__":
 
 						havescreenshot = screenshot.clickOnAirplane(browser, hexcode)
 
-					print("Getting FlightAware flight details")
-					faInfo = fa_api.FlightInfo(a[0].flight, fa_username, fa_api_key)
+					if fa_enable:
+					    print("Getting FlightAware flight details")
+					    faInfo = fa_api.FlightInfo(a[0].flight, fa_username, fa_api_key)
 
 					print("time to tweet!!!!!")
 					
