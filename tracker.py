@@ -25,7 +25,7 @@ abovetustin_wait_x_updates = int(parser.get('abovetustin', 'wait_x_updates'))	# 
 abovetustin_sleep_time = float(parser.get('abovetustin', 'sleep_time'))		# Time between each loop.
 
 # Assign FlightAware variables.
-fa_enable = parser.get('flightaware', 'fa_enable')
+fa_enable = parser.getboolean('flightaware', 'fa_enable')
 fa_username = parser.get('flightaware', 'fa_username')
 fa_api_key = parser.get('flightaware', 'fa_api_key')
 
@@ -59,7 +59,7 @@ def Tweet(a, havescreenshot):
 	templateArgs['squawk'] = a.squawk
 	templateArgs['vert_rate'] = a.vert_rate
 	templateArgs['rssi'] = a.rssi
-	if faInfo:
+	if fa_enable and faInfo:
 		templateArgs['orig_name'] = faInfo['orig_name']
 		templateArgs['dest_name'] = faInfo['dest_name']
 		if faInfo['orig_alt']:
@@ -69,12 +69,13 @@ def Tweet(a, havescreenshot):
 		if faInfo['dest_alt']:
 			templateArgs['dest_alt'] = faInfo['dest_alt']
 		else:
-			templateArgs['dest_alt'] = faInfo['dest_code']
-	if templateArgs['orig_alt'] and templateArgs['dest_alt'] and fa_enable:
-		tweet = Template(parser.get('tweet', 'fa_tweet_template')).substitute(templateArgs)
+			templateArgs['dest_alt'] = faInfo['dest_code']	
+		if templateArgs['orig_alt'] and templateArgs['dest_alt']:
+			tweet = Template(parser.get('tweet', 'fa_tweet_template')).substitute(templateArgs)
+		else:
+			tweet = Template(parser.get('tweet', 'tweet_template')).substitute(templateArgs)
 	else:
 		tweet = Template(parser.get('tweet', 'tweet_template')).substitute(templateArgs)
-
 	#conditional hashtags:
 	hashtags = []
 	if a.time.hour < 7 or a.time.hour >= 23 or (a.time.weekday() == 7 and a.time.hour < 8):
@@ -196,8 +197,10 @@ if __name__ == "__main__":
 						havescreenshot = screenshot.clickOnAirplane(browser, hexcode)
 
 					if fa_enable:
-					    print("Getting FlightAware flight details")
-					    faInfo = fa_api.FlightInfo(a[0].flight, fa_username, fa_api_key)
+						print("Getting FlightAware flight details")
+						faInfo = fa_api.FlightInfo(a[0].flight, fa_username, fa_api_key)
+					else:
+						faInfo = False
 
 					print("time to tweet!!!!!")
 					
