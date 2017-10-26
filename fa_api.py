@@ -11,11 +11,11 @@ def FlightInfo(ident, username, apiKey, verbose=0, results=10):
 	ident = ident.strip()
 	payload = {'ident':ident, 'howMany':results}
 	response = requests.get(fxmlUrl + "FlightInfoStatus", params=payload, auth=(username, apiKey))
-
+	output = dict()
 	if response.status_code == 200:
 		decodedResponse = response.json()
 		for flight in decodedResponse['FlightInfoStatusResult']['flights']:
-			if flight['status'] == 'On':
+			if flight['status'] == 'On' or flight['status'] == 'En':
 				output = {
 					"orig_name":flight['origin']['airport_name'],
 					"orig_alt":flight['origin']['alternate_ident'],
