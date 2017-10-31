@@ -69,7 +69,11 @@ def Tweet(a, havescreenshot):
 		if faInfo['dest_alt']:
 			templateArgs['dest_alt'] = faInfo['dest_alt']
 		else:
-			templateArgs['dest_alt'] = faInfo['dest_code']	
+			templateArgs['dest_alt'] = faInfo['dest_code']
+		if faInfo['dest_city']:
+			templateArgs['dest_city'] = faInfo['dest_city']
+		if faInfo['orig_city']:
+			templateArgs['orig_city'] = faInfo['orig_city']
 		if templateArgs['orig_alt'] and templateArgs['dest_alt']:
 			tweet = Template(parser.get('tweet', 'fa_tweet_template')).substitute(templateArgs)
 		else:
