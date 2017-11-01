@@ -50,22 +50,28 @@ class FlightData():
         self.refresh()
 
     def refresh(self):
-        #open the data url
-        self.req = urlopen(self.data_url)
+        try:
+            #open the data url
+            self.req = urlopen(self.data_url)
 
-        #read data from the url
-        self.raw_data = self.req.read()
+            #read data from the url
+            self.raw_data = self.req.read()
 
-        #load in the json
-        self.json_data = json.loads(self.raw_data.decode())
+            #load in the json
+            self.json_data = json.loads(self.raw_data.decode())
 
-        #get time from json and convert to our time zone
-        self.time = datetime.fromtimestamp(self.json_data["now"])
-        self.time = self.time.replace(tzinfo=utc_time_zone)
-        self.time = self.time.astimezone(receiver_time_zone)
+            #get time from json and convert to our time zone
+            self.time = datetime.fromtimestamp(self.json_data["now"])
+            self.time = self.time.replace(tzinfo=utc_time_zone)
+            self.time = self.time.astimezone(receiver_time_zone)
 
-        #load all the aircarft
-        self.aircraft = AirCraftData.parse_flightdata_json(self.json_data, self.time)
+            #load all the aircarft
+            self.aircraft = AirCraftData.parse_flightdata_json(self.json_data, self.time)
+
+        except:
+            print("exception in FlightData.refresh()")
+            import sys
+            print (sys.exc_info()[0])
 
 class AirCraftData():
     def __init__(self,
