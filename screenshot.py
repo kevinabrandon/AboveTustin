@@ -51,8 +51,7 @@ def loadmap():
     Returns the browser on success, None on fail.
     '''
     try:
-        browser = webdriver.PhantomJS()
-
+        browser = webdriver.PhantomJS(desired_capabilities={'phantomjs.page.settings.resourceTimeout': '20000'})
         browser.set_window_size(abovetustin_image_width, abovetustin_image_height)
 
         print ("getting web page...")
