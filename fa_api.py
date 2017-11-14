@@ -13,6 +13,9 @@ def FlightInfo(ident, username, apiKey, verbose=0, results=10):
 		payload = {'ident':ident, 'howMany':results}
 		response = requests.get(fxmlUrl + "FlightInfoStatus", params=payload, auth=(username, apiKey))
 		output = dict()
+		if response.status_code == 402:
+			print(response.text)
+			return False
 		if response.status_code == 200:
 			decodedResponse = response.json()
 			print(decodedResponse)
@@ -21,7 +24,7 @@ def FlightInfo(ident, username, apiKey, verbose=0, results=10):
 			for flight in decodedResponse['FlightInfoStatusResult']['flights']:
 				if 'status' not in flight:
 					continue
-				if flight['status'] == 'On' or flight['status'] == 'En':
+				if flight['status'].startswith('On') or flight['status'].startswith('En'):
 					output = {
 						"orig_name":flight['origin']['airport_name'],
 						"orig_city":flight['origin']['city'],
@@ -38,6 +41,8 @@ def FlightInfo(ident, username, apiKey, verbose=0, results=10):
 			else:
 				return output
 		else:
+			print("status code: " % response.status_code)
+			print(response.text)
 			return False
 	except:
 		print("exception in fa_api.FlightInfo()")
