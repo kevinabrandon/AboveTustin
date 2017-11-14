@@ -99,9 +99,11 @@ def screenshot(browser, name):
         else:
             browser.save_screenshot(name)
         print("success saving screnshot: %s" % name)
+        return True
     except:
         print("exception in screenshot()")
         print(sys.exc_info()[0])
+    return False
 
 
 def clickOnAirplane(browser, text):
@@ -116,12 +118,10 @@ def clickOnAirplane(browser, text):
             print("click!")
             element[0].click()
             time.sleep(0.5) # if we don't wait a little bit the airplane icon isn't drawn.
-            screenshot(browser, 'tweet.png')
-            return True
+            return screenshot(browser, 'tweet.png')
         else:
             print("couldn't find the object")
     except:
         print("exception in clickOnAirplane()")
         print (sys.exc_info()[0])
-
     return False

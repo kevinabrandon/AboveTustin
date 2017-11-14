@@ -5,6 +5,7 @@
 #
 
 import sys
+import time
 from time import sleep
 from twitter import *
 import flightdata
@@ -124,6 +125,7 @@ def Tweet(a, havescreenshot):
 
 if __name__ == "__main__":
 
+	lastReloadTime = time.time()
 	browser = screenshot.loadmap()
 	if browser == None:
 		print("unable to load browser!")
@@ -141,6 +143,13 @@ if __name__ == "__main__":
 	lastTime = fd.time
 
 	while True:
+		if time.time() > lastReloadTime + 3600 and len(alarms) == 0:
+			print("one hour since last browser reload... reloading now")
+			if browser != None:
+				browser.quit()
+			browser = screenshot.loadmap()
+			lastReloadTime = time.time()
+
 		sleep(abovetustin_sleep_time)
 		fd.refresh()
 		if fd.time == lastTime:
@@ -208,9 +217,12 @@ if __name__ == "__main__":
 
 					print("time to tweet!!!!!")
 					
-
-					Tweet(a[0], havescreenshot)
-
+					try:
+						Tweet(a[0], havescreenshot)
+					except:
+						import sys
+						print("exception in Tweet()")
+						print(sys.exc_info()[0])
 					finishedalarms.append(a[0].hex)
 		
 		# for each alarm that is finished, delete it from the dictionary
