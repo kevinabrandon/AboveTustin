@@ -23,7 +23,6 @@ from time import sleep
 import geomath
 import math
 from datetime import datetime
-from dateutil import tz
 from configparser import ConfigParser
 
 # Read the configuration file for this application.
@@ -36,10 +35,6 @@ dump1090_data_url = parser.get('dump1090', 'data_url')
 # Assign receiver variables.
 receiver_latitude = float(parser.get('receiver', 'latitude'))
 receiver_longitude = float(parser.get('receiver', 'longitude'))
-receiver_time_zone = tz.gettz(parser.get('receiver', 'time_zone'))
-
-# Other variables used by this script.
-utc_time_zone = tz.gettz('UTC')
 
 class FlightData():
     def __init__(self, data_url = dump1090_data_url):
@@ -60,10 +55,8 @@ class FlightData():
             #load in the json
             self.json_data = json.loads(self.raw_data.decode())
 
-            #get time from json and convert to our time zone
+            #get time from json
             self.time = datetime.fromtimestamp(self.json_data["now"])
-            self.time = self.time.replace(tzinfo=utc_time_zone)
-            self.time = self.time.astimezone(receiver_time_zone)
 
             #load all the aircarft
             self.aircraft = AirCraftData.parse_flightdata_json(self.json_data, self.time)
