@@ -55,6 +55,7 @@ def loadmap():
         browser.set_window_size(abovetustin_image_width, abovetustin_image_height)
 
         print ("getting web page...")
+        browser.set_page_load_timeout(15)
         browser.get(dump1090_map_url)
 
         # Need to wait for the page to load
