@@ -24,7 +24,7 @@ def FlightInfo(ident, username, apiKey, verbose=0, results=10):
 			for flight in decodedResponse['FlightInfoStatusResult']['flights']:
 				if 'status' not in flight:
 					continue
-				if flight['status'].startswith('On') or flight['status'].startswith('En'):
+				if flight['status'].startswith('On') or flight['status'].startswith('En') or flight['status'].startswith('In'):
 					output = {
 						"orig_name":flight['origin']['airport_name'],
 						"orig_city":flight['origin']['city'],
