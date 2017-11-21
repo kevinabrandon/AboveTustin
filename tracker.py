@@ -50,15 +50,21 @@ def Tweet(a, havescreenshot):
 	templateArgs['flight'] = templateArgs['flight'].replace(" ", "")
 	templateArgs['icao'] = a.hex
 	templateArgs['icao'] = templateArgs['icao'].replace(" ", "")
-	templateArgs['dist'] = "%.1f" % a.distance
-	templateArgs['alt'] = a.altitude
+	templateArgs['dist_mi'] = "%.1f" % a.distance
+	templateArgs['dist_km'] = "%.1f" % geomath.mi2km(a.distance)
+	templateArgs['dist_nm'] = "%.1f" % geomath.mi2nm(a.distance)
+	templateArgs['alt_ft'] = a.altitude
+	templateArgs['alt_m'] = "%.1f" % geomath.ft2m(a.altitude)
 	templateArgs['el'] = "%.1f" % a.el
 	templateArgs['az'] = "%.1f" % a.az
 	templateArgs['heading'] = geomath.HeadingStr(a.track)
-	templateArgs['speed'] = "%.1f" % a.speed
+	templateArgs['speed_mph'] = "%.1f" % a.speed
+	templateArgs['speed_kmph'] = "%.1f" % geomath.mi2km(a.speed)
+	templateArgs['speed_kts'] = "%.1f" % geomath.mi2nm(a.speed)
 	templateArgs['time'] = a.time.strftime('%H:%M:%S')
 	templateArgs['squawk'] = a.squawk
-	templateArgs['vert_rate'] = a.vert_rate
+	templateArgs['vert_rate_ftpm'] = a.vert_rate
+	templateArgs['vert_rate_mpm'] = "%.1f" % geomath.ft2m(a.vert_rate)
 	templateArgs['rssi'] = a.rssi
 	if fa_enable and faInfo:
 		templateArgs['orig_name'] = faInfo['orig_name']
@@ -121,7 +127,6 @@ def Tweet(a, havescreenshot):
 
 	# send the tweet to stdout while we're at it
 	print(tweet)
-
 
 if __name__ == "__main__":
 
