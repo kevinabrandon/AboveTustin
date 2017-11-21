@@ -1,0 +1,4 @@
+Pillow==4.3.0
+requests==2.18.4
+selenium==3.7.0
+twitter==1.18.0
