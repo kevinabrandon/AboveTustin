@@ -41,6 +41,29 @@ def knot2mph(k):
 		return None
 	return k * 1.15078
 
+def mi2km(mi):
+	"""
+	Converts to miles to kilometers.
+	"""
+	if mi == None:
+		return None
+	return mi * 1.60934
+
+def mi2nm(mi):
+	"""
+	Converts miles to nautical miles
+	"""
+	if mi == None:
+		return None
+	return mi * 0.868976
+
+def ft2m(ft):
+	"""
+	Converts feet to meters.
+	"""
+	if ft == None:
+		return None
+	return ft * 0.3048
 
 def distance(pointA, pointB):
 	"""
