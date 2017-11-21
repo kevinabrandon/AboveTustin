@@ -7,6 +7,7 @@
 import sys
 import time
 from selenium import webdriver
+from selenium.common import exceptions as seleniumexceptions
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -69,7 +70,16 @@ def loadmap():
         resetbutton[0].click()
 
         print("zoom in 4 times:")
-        zoomin = browser.find_element_by_class_name('ol-zoom-in')
+        try:
+            # First look for the Open Layers map zoom button.
+            zoomin = browser.find_element_by_class_name('ol-zoom-in')
+            print(zoomin)
+        except seleniumexceptions.NoSuchElementException as e:
+            # Doesn't seem to be Open Layers, so look for the Google
+            # maps zoom button.
+            zoomin = browser.find_elements_by_xpath('//*[@title="Zoom in"]')
+            if zoomin:
+                zoomin = zoomin[0]
         zoomin.click()
         zoomin.click()
         zoomin.click()
