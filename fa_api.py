@@ -43,7 +43,7 @@ def FlightInfo(ident, username, apiKey, verbose=0, results=10):
 			else:
 				return output
 		else:
-			print("status code: " % response.status_code)
+			print("FA API status code: {}".format(response.status_code))
 			print(response.text)
 			return False
 	except Exception:
