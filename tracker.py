@@ -130,12 +130,7 @@ def Tweet(a, havescreenshot):
 if __name__ == "__main__":
 
 	lastReloadTime = time.time()
-	browser = screenshot.loadmap()
-	if browser == None:
-		print("unable to load browser!")
-	else:
-		print("browser loaded!")
-
+	display = screenshot.Dump1090Display(url=screenshot.dump1090_map_url)
 	alarms = dict() # dictonary of all aircraft that have triggered the alarm
 			# Indexed by it's hex code, each entry contains a tuple of
 			# the aircraft data at the closest position so far, and a 
@@ -149,9 +144,7 @@ if __name__ == "__main__":
 	while True:
 		if time.time() > lastReloadTime + 3600 and len(alarms) == 0:
 			print("one hour since last browser reload... reloading now")
-			if browser != None:
-				browser.quit()
-			browser = screenshot.loadmap()
+			display.reload()
 			lastReloadTime = time.time()
 
 		sleep(abovetustin_sleep_time)
@@ -201,13 +194,13 @@ if __name__ == "__main__":
 					alarms[h] = (a[0], a[1]+1)
 				else:				
 					havescreenshot = False
-					if browser != None:
+					if display != None:
 						print("time to create screenshot:")
 						hexcode = a[0].hex
 						hexcode = hexcode.replace(" ", "")
 						hexcode = hexcode.replace("~", "")
 
-						havescreenshot = screenshot.clickOnAirplane(browser, hexcode)
+						havescreenshot = display.clickOnAirplane(hexcode)
 
 					if fa_enable:
 						print("Getting FlightAware flight details")
