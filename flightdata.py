@@ -37,11 +37,10 @@ receiver_latitude = float(parser.get('receiver', 'latitude'))
 receiver_longitude = float(parser.get('receiver', 'longitude'))
 
 class FlightData():
-    def __init__(self, data_url = dump1090_data_url):
-
+    def __init__(self, data_url=dump1090_data_url, parser=None):
         self.data_url = data_url
+        self.parser = parser
         self.aircraft = None
-
         self.refresh()
 
     def refresh(self):
@@ -56,10 +55,10 @@ class FlightData():
             self.json_data = json.loads(self.raw_data.decode())
 
             #get time from json
-            self.time = datetime.fromtimestamp(self.json_data["now"])
+            self.time = datetime.fromtimestamp(self.parser.time(self.json_data))
 
             #load all the aircarft
-            self.aircraft = AirCraftData.parse_flightdata_json(self.json_data, self.time)
+            self.aircraft = self.parser.aircraft_data(self.json_data, self.time)
 
         except:
             print("exception in FlightData.refresh()")
@@ -71,6 +70,7 @@ class AirCraftData():
                  dhex,
                  squawk,
                  flight,
+                 registration,
                  lat,
                  lon,
                  altitude,
@@ -87,10 +87,10 @@ class AirCraftData():
                  az,
                  el,
                  time):
-        
         self.hex = dhex
         self.squawk = squawk
         self.flight = flight
+        self.registration = registration
         self.lat = lat
         self.lon = lon
         self.altitude = altitude
@@ -108,8 +108,74 @@ class AirCraftData():
         self.el = el
         self.time = time
 
-    @staticmethod
-    def parse_flightdata_json(json_data, time):
+    def __str__(self):
+        idents = [self.hex, self.registration, self.flight]
+        idents = [i for i in idents if i]
+        return '<{} {} dist={} el={}>'.format(
+            self.__class__.__name__,
+            '/'.join(idents),
+            self.distance,
+            self.el)
+
+class AircraftDataParser(object):
+    def __init__(self):
+        pass
+
+    def aircraft_data(self, json_data, time):
+        raise NotImplementedError
+
+    def time(self, json_data):
+        raise NotImplementedError
+
+
+class VRSDataParser(AircraftDataParser):
+    def _parse_aircraft_data(self, a, time):
+        alt = a.get('Alt', 0)
+        dist = -1
+        az = 0
+        el = 0
+        if 'Lat' in a and 'Long' in a:
+            rec_pos = (receiver_latitude, receiver_longitude)
+            ac_pos = (a['Lat'], a['Long'])
+            dist = geomath.distance(rec_pos, ac_pos)
+            az = geomath.bearing(rec_pos, ac_pos)
+            el = math.degrees(math.atan(alt / (dist * 5280)))
+        speed = 0
+        if 'Spd' in a:
+            speed = geomath.knot2mph(a['Spd'])
+        ac_data = AirCraftData(
+            a.get('Icao', None),
+            a.get('Sqk', None),
+            a.get('Call', None),
+            a.get('Reg', None),
+            a.get('Lat', None),
+            a.get('Long', None),
+            alt,
+            a.get('Vsi', 0),
+            a.get('Trak', None),
+            speed,
+            a.get('CMsgs', None),
+            None,  # time since last msg received
+            a.get('Mlat', False),
+            None,  # NUCP
+            None,  # Seen pos
+            a.get('Sig', 0),
+            dist,
+            az,
+            el,
+            time)
+        return ac_data
+
+    def aircraft_data(self, json_data, time):
+        aircraft_list = [self._parse_aircraft_data(d, time) for d in json_data['acList']]
+        return aircraft_list
+
+    def time(self, json_data):
+        return json_data['stm'] / 1000.0
+
+
+class Dump1090DataParser(AircraftDataParser):
+    def aircraft_data(self, json_data, time):
         aircraft_list = []
         for a in json_data["aircraft"]:
 
@@ -130,7 +196,8 @@ class AirCraftData():
             aircraftdata = AirCraftData(
                 a["hex"] if "hex" in a else None,
                 a["squawk"] if "squawk" in a else None,
-                a["flight"] if "flight" in a else "N/A",
+                a["flight"] if "flight" in a else None,
+                None,
                 a["lat"] if "lat" in a else None,
                 a["lon"] if "lon" in a else None,
                 alt,
@@ -150,6 +217,9 @@ class AirCraftData():
 
             aircraft_list.append(aircraftdata)
         return aircraft_list
+
+    def time(self, json_data):
+        return json_data['now']
 
 
 if __name__ == "__main__":
