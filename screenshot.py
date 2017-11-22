@@ -6,6 +6,7 @@
 
 import sys
 import time
+import traceback
 from selenium import webdriver
 from selenium.common import exceptions as seleniumexceptions
 from selenium.webdriver.support.wait import WebDriverWait
@@ -86,9 +87,9 @@ def loadmap():
         zoomin.click()
 
         return browser
-    except:
-        print("exception in loadmap()")
-        print (sys.exc_info()[0])
+    except Exception:
+        print("exception in loadmap():")
+        traceback.print_exc()
         return None
 
 
@@ -111,9 +112,9 @@ def screenshot(browser, name):
             browser.save_screenshot(name)
         print("success saving screnshot: %s" % name)
         return True
-    except:
-        print("exception in screenshot()")
-        print(sys.exc_info()[0])
+    except Exception:
+        print("exception in screenshot():")
+        traceback.print_exc()
     return False
 
 
@@ -132,7 +133,7 @@ def clickOnAirplane(browser, text):
             return screenshot(browser, 'tweet.png')
         else:
             print("couldn't find the object")
-    except:
-        print("exception in clickOnAirplane()")
-        print (sys.exc_info()[0])
+    except Exception:
+        print("exception in clickOnAirplane():")
+        traceback.print_exc()
     return False

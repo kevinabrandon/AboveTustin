@@ -17,6 +17,7 @@
 #
 
 
+import traceback
 from urllib.request import urlopen
 import json
 from time import sleep
@@ -61,11 +62,11 @@ class FlightData():
             #load all the aircarft
             self.aircraft = AirCraftData.parse_flightdata_json(self.json_data, self.time)
 
-        except:
-            print("exception in FlightData.refresh()")
-            import sys
-            print (sys.exc_info()[0])
+        except Exception:
+            print("exception in FlightData.refresh():")
+            traceback.print_exc()
 
+            
 class AirCraftData():
     def __init__(self,
                  dhex,
