@@ -65,7 +65,7 @@ class FlightData():
             print("exception in FlightData.refresh():")
             traceback.print_exc()
 
-            
+
 class AirCraftData():
     def __init__(self,
                  dhex,
@@ -110,13 +110,18 @@ class AirCraftData():
         self.time = time
 
     def __str__(self):
-        idents = [self.hex, self.registration, self.flight]
-        idents = [i for i in idents if i]
         return '<{} {} dist={} el={}>'.format(
             self.__class__.__name__,
-            '/'.join(idents),
+            self.ident_desc(),
             self.distance,
             self.el)
+
+    def ident_desc(self):
+        idents = [self.hex, self.registration]
+        if self.flight != self.registration:
+            idents.append(self.flight)
+        idents = [i for i in idents if i]
+        return '/'.join(idents)
 
 class AircraftDataParser(object):
     def __init__(self):
@@ -144,8 +149,13 @@ class VRSDataParser(AircraftDataParser):
         speed = 0
         if 'Spd' in a:
             speed = geomath.knot2mph(a['Spd'])
+        if 'PosTime' in a:
+            last_seen_time = datetime.fromtimestamp(a['PosTime'] / 1000.0)
+            seen = (time - last_seen_time).total_seconds()
+        else:
+            seen = 0
         ac_data = AirCraftData(
-            a.get('Icao', None),
+            a.get('Icao', None).upper(),
             a.get('Sqk', None),
             a.get('Call', None),
             a.get('Reg', None),
@@ -156,11 +166,11 @@ class VRSDataParser(AircraftDataParser):
             a.get('Trak', None),
             speed,
             a.get('CMsgs', None),
-            None,  # time since last msg received
+            seen,
             a.get('Mlat', False),
             None,  # NUCP
             None,  # Seen pos
-            a.get('Sig', 0),
+            10.0 * math.log10(a.get('Sig', 0) / 255.0 + 1e-5),
             dist,
             az,
             el,
@@ -195,7 +205,7 @@ class Dump1090DataParser(AircraftDataParser):
                 speed = geomath.knot2mph(a["speed"])
 
             aircraftdata = AirCraftData(
-                a["hex"] if "hex" in a else None,
+                a["hex"].upper() if "hex" in a else None,
                 a["squawk"] if "squawk" in a else None,
                 a["flight"] if "flight" in a else None,
                 None,

@@ -93,7 +93,7 @@ class Dump1090Display(AircraftDisplay):
         browser = webdriver.PhantomJS(desired_capabilities={'phantomjs.page.settings.resourceTimeout': '20000'})
         browser.set_window_size(abovetustin_image_width, abovetustin_image_height)
 
-        print("getting web page...")
+        print("getting web page {}".format(self.url))
         browser.set_page_load_timeout(15)
         browser.get(self.url)
 
@@ -129,12 +129,49 @@ class Dump1090Display(AircraftDisplay):
         clickOnAirplane()
         Clicks on the airplane with the name text, and then takes a screenshot
         '''
-        element = self.browser.find_elements_by_xpath("//td[text()='%s']" % text)
+        element = self.browser.find_elements_by_xpath("//td[translate(text(), 'ABCDEF', 'abcdef')='%s']" % text)
         print("number of elements found: %i" % len(element))
         if len(element) > 0:
-            print("click!")
+            print("clicking on {}!".format(text))
             element[0].click()
             time.sleep(0.5) # if we don't wait a little bit the airplane icon isn't drawn.
             return self.screenshot('tweet.png')
         else:
             print("couldn't find the object")
+
+
+class VRSDisplay(AircraftDisplay):
+    def loadmap(self):
+        '''
+        loadmap()
+        Creates a browser object and loads the webpage.
+        It sets up the map to the proper zoom level.
+
+        Returns the browser on success, None on fail.
+        '''
+        browser = webdriver.PhantomJS(desired_capabilities={'phantomjs.page.settings.resourceTimeout': '20000'})
+        browser.set_window_size(abovetustin_image_width, abovetustin_image_height)
+
+        print("getting web page {}".format(self.url))
+        browser.set_page_load_timeout(15)
+        browser.get(self.url)
+
+        # Need to wait for the page to load
+        timeout = dump1090_request_timeout
+        print ("waiting for page to load...")
+        wait = WebDriverWait(browser, timeout)
+        element = wait.until(EC.element_to_be_clickable((By.CLASS_NAME,'vrsMenu')))
+        self.browser = browser
+
+    def clickOnAirplane(self, text):
+        '''
+        clickOnAirplane()
+        Clicks on the airplane with the name text, and then takes a screenshot
+        '''
+        aircraft = self.browser.find_element_by_xpath("//td[text()='%s']" % text)
+        aircraft.click()
+        time.sleep(0.5) # if we don't wait a little bit the airplane icon isn't drawn.
+        show_on_map = self.browser.find_element_by_link_text('Show on map')
+        show_on_map.click()
+        time.sleep(3.0)
+        return self.screenshot('tweet.png')

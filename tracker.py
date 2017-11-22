@@ -167,8 +167,8 @@ if __name__ == "__main__":
 			if a.distance < abovetustin_distance_alarm or a.el > abovetustin_elevation_alarm:
 				# add it to the current dictionary
 				current[a.hex] = a 
-				print("{}/{}: {}mi, {}az, {}el, {}alt, {}dB, {}seen".format(
-					a.hex, a.flight, "%.1f" % a.distance, "%.1f" % a.az, "%.1f" % a.el,
+				print("{}: {}mi, {}az, {}el, {}alt, {}dB, {}seen".format(
+					a.ident_desc(), "%.1f" % a.distance, "%.1f" % a.az, "%.1f" % a.el,
 					a.altitude, "%0.1f" % a.rssi, "%.1f" % (a.seen or 0)))
 				if a.hex in alarms:
 					#if it's already in the alarms dict, check to see if we're closer
@@ -193,16 +193,14 @@ if __name__ == "__main__":
 			if not found:
 				if a[1] < abovetustin_wait_x_updates:
 					alarms[h] = (a[0], a[1]+1)
-				else:				
+				else:
 					havescreenshot = False
 					if display != None:
-						print("time to create screenshot:")
+						print("time to create screenshot of {}:".format(a[0]))
 						hexcode = a[0].hex
 						hexcode = hexcode.replace(" ", "")
 						hexcode = hexcode.replace("~", "")
-
 						havescreenshot = display.clickOnAirplane(hexcode)
-
 					if fa_enable:
 						print("Getting FlightAware flight details")
 						faInfo = fa_api.FlightInfo(a[0].flight, fa_username, fa_api_key)
