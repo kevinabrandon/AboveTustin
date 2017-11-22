@@ -6,6 +6,7 @@
 
 import sys
 import time
+import traceback
 from selenium import webdriver
 from selenium.common import exceptions as seleniumexceptions
 from selenium.webdriver.support.wait import WebDriverWait

@@ -5,6 +5,7 @@
 #
 
 import sys
+import traceback
 import time
 from time import sleep
 from twitter import *
@@ -212,10 +213,9 @@ if __name__ == "__main__":
 					
 					try:
 						Tweet(a[0], havescreenshot)
-					except:
-						import sys
-						print("exception in Tweet()")
-						print(sys.exc_info()[0])
+					except Exception:
+						print("exception in Tweet():")
+						traceback.print_exc()
 					finishedalarms.append(a[0].hex)
 		
 		# for each alarm that is finished, delete it from the dictionary

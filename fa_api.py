@@ -4,6 +4,8 @@
 # Sergiusz Paprzycki <serek@walcz.net>
 # 
 
+import traceback
+
 import requests
 
 def FlightInfo(ident, username, apiKey, verbose=0, results=10):
@@ -41,11 +43,10 @@ def FlightInfo(ident, username, apiKey, verbose=0, results=10):
 			else:
 				return output
 		else:
-			print("status code: " % response.status_code)
+			print("FA API status code: {}".format(response.status_code))
 			print(response.text)
 			return False
-	except:
-		print("exception in fa_api.FlightInfo()")
-		import sys
-		print (sys.exc_info()[0])
+	except Exception:
+		print("exception in fa_api.FlightInfo():")
+		traceback.print_exc()
 		return False
