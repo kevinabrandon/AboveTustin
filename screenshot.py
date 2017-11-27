@@ -14,6 +14,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from configparser import ConfigParser
 
+import util
+
 # Read the configuration file for this application.
 parser = ConfigParser()
 parser.read('config.ini')
@@ -41,8 +43,7 @@ else:
     do_crop = False
 
 # Assign dump1090 variables.
-dump1090_map_url = parser.get('dump1090', 'map_url')
-dump1090_request_timeout = int(parser.get('dump1090', 'request_timeout'))
+g_request_timeout = int(parser.get('abovetustin', 'request_timeout'))
 
 
 class AircraftDisplay(object):
@@ -98,10 +99,17 @@ class Dump1090Display(AircraftDisplay):
         browser.get(self.url)
 
         # Need to wait for the page to load
-        timeout = dump1090_request_timeout
+        timeout = g_request_timeout
         print ("waiting for page to load...")
         wait = WebDriverWait(browser, timeout)
-        element = wait.until(EC.element_to_be_clickable((By.ID,'dump1090_version')))
+        try:
+            element = wait.until(EC.element_to_be_clickable((By.ID,'dump1090_version')))
+        except seleniumexceptions.TimeoutException:
+            util.error("Loading %s timed out.  Check that you're using the "
+                       "correct driver in the .ini file." % (self.url,))
+            browser.save_screenshot('timeout.png')
+            util.error('Saved screenshot at timeout.png')
+            raise
 
         print("reset map:")
         resetbutton = browser.find_elements_by_xpath("//*[contains(text(), 'Reset Map')]")
@@ -157,7 +165,7 @@ class VRSDisplay(AircraftDisplay):
         browser.get(self.url)
 
         # Need to wait for the page to load
-        timeout = dump1090_request_timeout
+        timeout = g_request_timeout
         print ("waiting for page to load...")
         wait = WebDriverWait(browser, timeout)
         element = wait.until(EC.element_to_be_clickable((By.CLASS_NAME,'vrsMenu')))

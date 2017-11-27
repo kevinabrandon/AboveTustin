@@ -9,12 +9,14 @@ import traceback
 import time
 from time import sleep
 from twitter import *
-import flightdata
-import screenshot
 from configparser import ConfigParser
 from string import Template
-import geomath
+
+import datasource
 import fa_api
+import flightdata
+import geomath
+import screenshot
 
 # Read the configuration file for this application.
 parser = ConfigParser()
@@ -36,6 +38,7 @@ twitter_consumer_key = parser.get('twitter', 'consumer_key')
 twitter_consumer_secret = parser.get('twitter', 'consumer_secret')
 twitter_access_token = parser.get('twitter', 'access_token')
 twitter_access_token_secret = parser.get('twitter', 'access_token_secret')
+
 
 # Login to twitter.
 twit = Twitter(auth=(OAuth(twitter_access_token, twitter_access_token_secret, twitter_consumer_key, twitter_consumer_secret)))
@@ -131,7 +134,7 @@ def Tweet(a, havescreenshot):
 if __name__ == "__main__":
 
 	lastReloadTime = time.time()
-	display = screenshot.Dump1090Display(url=screenshot.dump1090_map_url)
+	display = datasource.get_map_source()
 	alarms = dict() # dictonary of all aircraft that have triggered the alarm
 			# Indexed by it's hex code, each entry contains a tuple of
 			# the aircraft data at the closest position so far, and a 
@@ -139,7 +142,7 @@ if __name__ == "__main__":
 			# the counter is incremented until we hit [abovetustin_wait_x_updates]
 			# (defined above), at which point we then Tweet
 
-	fd = flightdata.FlightData(parser=flightdata.Dump1090DataParser())
+	fd = datasource.get_data_source()
 	lastTime = fd.time
 
 	while True:

@@ -30,15 +30,12 @@ from configparser import ConfigParser
 parser = ConfigParser()
 parser.read('config.ini')
 
-# Assign dump1090 variables.
-dump1090_data_url = parser.get('dump1090', 'data_url')
-
 # Assign receiver variables.
 receiver_latitude = float(parser.get('receiver', 'latitude'))
 receiver_longitude = float(parser.get('receiver', 'longitude'))
 
 class FlightData():
-    def __init__(self, data_url=dump1090_data_url, parser=None):
+    def __init__(self, data_url=None, parser=None):
         self.data_url = data_url
         self.parser = parser
         self.aircraft = None
