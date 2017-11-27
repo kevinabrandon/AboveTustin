@@ -42,7 +42,7 @@ else:
 
 # Assign dump1090 variables.
 dump1090_map_url = parser.get('dump1090', 'map_url')
-dump1090_request_timeout = int(parser.get('dump1090', 'request_timeout'))
+dump1090_request_timeout = float(parser.get('dump1090', 'request_timeout'))
 
 def loadmap():
     '''
