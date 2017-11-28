@@ -39,11 +39,10 @@ twitter_consumer_secret = parser.get('twitter', 'consumer_secret')
 twitter_access_token = parser.get('twitter', 'access_token')
 twitter_access_token_secret = parser.get('twitter', 'access_token_secret')
 
-
 # Login to twitter.
 twit = Twitter(auth=(OAuth(twitter_access_token, twitter_access_token_secret, twitter_consumer_key, twitter_consumer_secret)))
 
-# Given an aircraft 'a' tweet.  
+# Given an aircraft 'a' tweet.
 # If we have a screenshot, upload it to twitter with the tweet.
 def Tweet(a, havescreenshot):
 	# compile the template arguments
@@ -88,6 +87,8 @@ def Tweet(a, havescreenshot):
 			tweet = Template(parser.get('tweet', 'fa_tweet_template')).substitute(templateArgs)
 		else:
 			tweet = Template(parser.get('tweet', 'tweet_template')).substitute(templateArgs)
+	elif a.anonymized:
+		tweet = Template(parser.get('tweet', 'anon_tweet_template')).substitute(templateArgs)
 	else:
 		tweet = Template(parser.get('tweet', 'tweet_template')).substitute(templateArgs)
 	#conditional hashtags:
@@ -202,9 +203,8 @@ if __name__ == "__main__":
 						print("time to create screenshot of {}:".format(a[0]))
 						hexcode = a[0].hex
 						hexcode = hexcode.replace(" ", "")
-						hexcode = hexcode.replace("~", "")
 						havescreenshot = display.clickOnAirplane(hexcode)
-					if fa_enable:
+					if fa_enable and not a[0].anonymized:
 						print("Getting FlightAware flight details")
 						faInfo = fa_api.FlightInfo(a[0].flight, fa_username, fa_api_key)
 					else:
