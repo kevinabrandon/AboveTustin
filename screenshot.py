@@ -14,6 +14,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from configparser import ConfigParser
 
+import util
+
 # Read the configuration file for this application.
 parser = ConfigParser()
 parser.read('config.ini')
@@ -41,30 +43,74 @@ else:
     do_crop = False
 
 # Assign dump1090 variables.
-dump1090_map_url = parser.get('dump1090', 'map_url')
-dump1090_request_timeout = float(parser.get('dump1090', 'request_timeout'))
+g_request_timeout = float(parser.get('abovetustin', 'request_timeout'))
 
-def loadmap():
-    '''
-    loadmap()
-    Creates a browser object and loads the webpage.
-    It sets up the map to the proper zoom level.
 
-    Returns the browser on success, None on fail.
-    '''
-    try:
+class AircraftDisplay(object):
+    def __init__(self, url):
+        self.url = url
+        self.browser = None
+        self.loadmap()
+
+    def loadmap(self):
+        raise NotImplementedError
+
+    def reload(self):
+        self.browser.quit()
+        self.browser = None
+        self.loadmap()
+
+    def screenshot(self, name):
+        '''
+        screenshot()
+        Takes a screenshot of the browser
+        '''
+        if do_crop:
+            print('cropping screenshot')
+            #  Grab screenshot rather than saving
+            im = self.browser.get_screenshot_as_png()
+            im = Image.open(BytesIO(im))
+
+            #  Crop to specifications
+            im = im.crop((crop_x, crop_y, crop_width, crop_height))
+            im.save(name)
+        else:
+            self.browser.save_screenshot(name)
+        print("success saving screenshot: %s" % name)
+        return name
+
+    def ClickOnAirplane(self, ident):
+        raise NotImplementedError
+
+
+class Dump1090Display(AircraftDisplay):
+    def loadmap(self):
+        '''
+        loadmap()
+        Creates a browser object and loads the webpage.
+        It sets up the map to the proper zoom level.
+
+        Returns the browser on success, None on fail.
+        '''
         browser = webdriver.PhantomJS(desired_capabilities={'phantomjs.page.settings.resourceTimeout': '20000'})
         browser.set_window_size(abovetustin_image_width, abovetustin_image_height)
 
-        print ("getting web page...")
+        print("getting web page {}".format(self.url))
         browser.set_page_load_timeout(15)
-        browser.get(dump1090_map_url)
+        browser.get(self.url)
 
         # Need to wait for the page to load
-        timeout = dump1090_request_timeout
+        timeout = g_request_timeout
         print ("waiting for page to load...")
         wait = WebDriverWait(browser, timeout)
-        element = wait.until(EC.element_to_be_clickable((By.ID,'dump1090_version')))
+        try:
+            element = wait.until(EC.element_to_be_clickable((By.ID,'dump1090_version')))
+        except seleniumexceptions.TimeoutException:
+            util.error("Loading %s timed out.  Check that you're using the "
+                       "correct driver in the .ini file." % (self.url,))
+            browser.save_screenshot('timeout.png')
+            util.error('Saved screenshot at timeout.png')
+            raise
 
         print("reset map:")
         resetbutton = browser.find_elements_by_xpath("//*[contains(text(), 'Reset Map')]")
@@ -85,55 +131,64 @@ def loadmap():
         zoomin.click()
         zoomin.click()
         zoomin.click()
+        self.browser = browser
 
-        return browser
-    except Exception:
-        print("exception in loadmap():")
-        traceback.print_exc()
-        return None
-
-
-def screenshot(browser, name):
-    '''
-    screenshot()
-    Takes a screenshot of the browser
-    '''
-    try:
-        if do_crop:
-            print('cropping screenshot')
-            #  Grab screenshot rather than saving
-            im = browser.get_screenshot_as_png()
-            im = Image.open(BytesIO(im))
-
-            #  Crop to specifications
-            im = im.crop((crop_x, crop_y, crop_width, crop_height))
-            im.save(name)
-        else:
-            browser.save_screenshot(name)
-        print("success saving screnshot: %s" % name)
-        return True
-    except Exception:
-        print("exception in screenshot():")
-        traceback.print_exc()
-    return False
+    def clickOnAirplane(self, text):
+        '''
+        clickOnAirplane()
+        Clicks on the airplane with the name text, and then takes a screenshot
+        '''
+        try:
+            element = self.browser.find_elements_by_xpath("//td[translate(text(), 'ABCDEF', 'abcdef')='%s']" % text)
+            print("number of elements found: %i" % len(element))
+            if len(element) > 0:
+                print("clicking on {}!".format(text))
+                element[0].click()
+                time.sleep(0.5) # if we don't wait a little bit the airplane icon isn't drawn.
+                return self.screenshot('tweet.png')
+            else:
+                print("couldn't find the object")
+        except Exception as e:
+            util.error("Could not click on airplane: {}".format(e))
+            return None
 
 
-def clickOnAirplane(browser, text):
-    '''
-    clickOnAirplane()
-    Clicks on the airplane with the name text, and then takes a screenshot
-    '''
-    try:
-        element = browser.find_elements_by_xpath("//td[text()='%s']" % text)
-        print("number of elements found: %i" % len(element))
-        if len(element) > 0:
-            print("click!")
-            element[0].click()
+class VRSDisplay(AircraftDisplay):
+    def loadmap(self):
+        '''
+        loadmap()
+        Creates a browser object and loads the webpage.
+        It sets up the map to the proper zoom level.
+
+        Returns the browser on success, None on fail.
+        '''
+        browser = webdriver.PhantomJS(desired_capabilities={'phantomjs.page.settings.resourceTimeout': '20000'})
+        browser.set_window_size(abovetustin_image_width, abovetustin_image_height)
+
+        print("getting web page {}".format(self.url))
+        browser.set_page_load_timeout(15)
+        browser.get(self.url)
+
+        # Need to wait for the page to load
+        timeout = g_request_timeout
+        print ("waiting for page to load...")
+        wait = WebDriverWait(browser, timeout)
+        element = wait.until(EC.element_to_be_clickable((By.CLASS_NAME,'vrsMenu')))
+        self.browser = browser
+
+    def clickOnAirplane(self, text):
+        '''
+        clickOnAirplane()
+        Clicks on the airplane with the name text, and then takes a screenshot
+        '''
+        try:
+            aircraft = self.browser.find_element_by_xpath("//td[text()='%s']" % text)
+            aircraft.click()
             time.sleep(0.5) # if we don't wait a little bit the airplane icon isn't drawn.
-            return screenshot(browser, 'tweet.png')
-        else:
-            print("couldn't find the object")
-    except Exception:
-        print("exception in clickOnAirplane():")
-        traceback.print_exc()
-    return False
+            show_on_map = self.browser.find_element_by_link_text('Show on map')
+            show_on_map.click()
+            time.sleep(3.0)
+            return self.screenshot('tweet.png')
+        except Exception as e:
+            util.error("Unable to click on airplane: {}'".format(e))
+            return None
