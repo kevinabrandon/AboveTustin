@@ -9,12 +9,14 @@ import traceback
 import time
 from time import sleep
 from twitter import *
-import flightdata
-import screenshot
 from configparser import ConfigParser
 from string import Template
-import geomath
+
+import datasource
 import fa_api
+import flightdata
+import geomath
+import screenshot
 
 # Read the configuration file for this application.
 parser = ConfigParser()
@@ -37,6 +39,7 @@ twitter_consumer_secret = parser.get('twitter', 'consumer_secret')
 twitter_access_token = parser.get('twitter', 'access_token')
 twitter_access_token_secret = parser.get('twitter', 'access_token_secret')
 
+
 # Login to twitter.
 twit = Twitter(auth=(OAuth(twitter_access_token, twitter_access_token_secret, twitter_consumer_key, twitter_consumer_secret)))
 
@@ -45,10 +48,9 @@ twit = Twitter(auth=(OAuth(twitter_access_token, twitter_access_token_secret, tw
 def Tweet(a, havescreenshot):
 	# compile the template arguments
 	templateArgs = dict()
-	templateArgs['flight'] = a.flight
-	if templateArgs['flight'] == 'N/A':
-		templateArgs['flight'] = a.hex
-	templateArgs['flight'] = templateArgs['flight'].replace(" ", "")
+	flight = a.flight or a.hex
+	flight = flight.replace(" ", "")
+	templateArgs['flight'] = flight
 	templateArgs['icao'] = a.hex
 	templateArgs['icao'] = templateArgs['icao'].replace(" ", "")
 	templateArgs['dist_mi'] = "%.1f" % a.distance
@@ -132,12 +134,7 @@ def Tweet(a, havescreenshot):
 if __name__ == "__main__":
 
 	lastReloadTime = time.time()
-	browser = screenshot.loadmap()
-	if browser == None:
-		print("unable to load browser!")
-	else:
-		print("browser loaded!")
-
+	display = datasource.get_map_source()
 	alarms = dict() # dictonary of all aircraft that have triggered the alarm
 			# Indexed by it's hex code, each entry contains a tuple of
 			# the aircraft data at the closest position so far, and a 
@@ -145,15 +142,13 @@ if __name__ == "__main__":
 			# the counter is incremented until we hit [abovetustin_wait_x_updates]
 			# (defined above), at which point we then Tweet
 
-	fd = flightdata.FlightData()
+	fd = datasource.get_data_source()
 	lastTime = fd.time
 
 	while True:
 		if time.time() > lastReloadTime + 3600 and len(alarms) == 0:
 			print("one hour since last browser reload... reloading now")
-			if browser != None:
-				browser.quit()
-			browser = screenshot.loadmap()
+			display.reload()
 			lastReloadTime = time.time()
 
 		sleep(abovetustin_sleep_time)
@@ -171,17 +166,13 @@ if __name__ == "__main__":
 			# if they don't have lat/lon or a heading skip them
 			if a.lat == None or a.lon == None or a.track == None:
 				continue
-
 			# check to see if it's in the alarm zone:
 			if a.distance < abovetustin_distance_alarm or a.el > abovetustin_elevation_alarm:
-
 				# add it to the current dictionary
 				current[a.hex] = a 
-
-				print("{}/{}: {}mi, {}az, {}el, {}alt, {}dB, {}seen".format(
-					a.hex, a.flight, "%.1f" % a.distance, "%.1f" % a.az, "%.1f" % a.el,
-					a.altitude, "%0.1f" % a.rssi, "%.1f" % a.seen))
-
+				print("{}: {}mi, {}az, {}el, {}alt, {}dB, {}seen".format(
+					a.ident_desc(), "%.1f" % a.distance, "%.1f" % a.az, "%.1f" % a.el,
+					a.altitude, "%0.1f" % a.rssi, "%.1f" % (a.seen or 0)))
 				if a.hex in alarms:
 					#if it's already in the alarms dict, check to see if we're closer
 					if a.distance < alarms[a.hex][0].distance:
@@ -205,16 +196,14 @@ if __name__ == "__main__":
 			if not found:
 				if a[1] < abovetustin_wait_x_updates:
 					alarms[h] = (a[0], a[1]+1)
-				else:				
+				else:
 					havescreenshot = False
-					if browser != None:
-						print("time to create screenshot:")
+					if display != None:
+						print("time to create screenshot of {}:".format(a[0]))
 						hexcode = a[0].hex
 						hexcode = hexcode.replace(" ", "")
 						hexcode = hexcode.replace("~", "")
-
-						havescreenshot = screenshot.clickOnAirplane(browser, hexcode)
-
+						havescreenshot = display.clickOnAirplane(hexcode)
 					if fa_enable:
 						print("Getting FlightAware flight details")
 						faInfo = fa_api.FlightInfo(a[0].flight, fa_username, fa_api_key)
