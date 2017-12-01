@@ -43,7 +43,7 @@ else:
     do_crop = False
 
 # Assign dump1090 variables.
-g_request_timeout = int(parser.get('abovetustin', 'request_timeout'))
+g_request_timeout = float(parser.get('abovetustin', 'request_timeout'))
 
 
 class AircraftDisplay(object):
