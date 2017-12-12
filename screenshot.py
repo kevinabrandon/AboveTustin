@@ -139,7 +139,7 @@ class Dump1090Display(AircraftDisplay):
         Clicks on the airplane with the name text, and then takes a screenshot
         '''
         try:
-            element = self.browser.find_elements_by_xpath("//td[translate(text(), 'ABCDEF', 'abcdef')='%s']" % text)
+            element = self.browser.find_elements_by_xpath("//td[text()='%s']" % text.lower())
             print("number of elements found: %i" % len(element))
             if len(element) > 0:
                 print("clicking on {}!".format(text))
