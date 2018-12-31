@@ -84,7 +84,8 @@ class AirCraftData():
                  dist, 
                  az,
                  el,
-                 time):
+                 time,
+                 anonymized=False):
         self.hex = dhex
         self.squawk = squawk
         self.flight = flight
@@ -105,13 +106,18 @@ class AirCraftData():
         self.az = az
         self.el = el
         self.time = time
+        self.anonymized = anonymized
 
     def __str__(self):
-        return '<{} {} dist={} el={}>'.format(
+        s = '<{} {} dist={} el={}'.format(
             self.__class__.__name__,
             self.ident_desc(),
             self.distance,
             self.el)
+        if self.anonymized:
+            s += ' anon'
+        s += '>'
+        return s
 
     def ident_desc(self):
         idents = [self.hex, self.registration]
@@ -186,7 +192,6 @@ class Dump1090DataParser(AircraftDataParser):
     def aircraft_data(self, json_data, time):
         aircraft_list = []
         for a in json_data["aircraft"]:
-
             alt = a["altitude"] if "altitude" in a else 0
             if alt == "ground":
                 alt = 0
@@ -200,9 +205,14 @@ class Dump1090DataParser(AircraftDataParser):
             speed = 0
             if "speed" in a:
                 speed = geomath.knot2mph(a["speed"])
-
+            hex = a.get("hex", None)
+            anonymized = False
+            # Strip off the anonymization marker
+            if hex and hex.startswith("~"):
+                hex = hex[1:]
+                anonymized = True
             aircraftdata = AirCraftData(
-                a["hex"].upper() if "hex" in a else None,
+                hex.upper() if hex else None,
                 a["squawk"] if "squawk" in a else None,
                 a["flight"] if "flight" in a else None,
                 None,
@@ -221,8 +231,8 @@ class Dump1090DataParser(AircraftDataParser):
                 dist,
                 az,
                 el,
-                time)
-
+                time,
+                anonymized=anonymized)
             aircraft_list.append(aircraftdata)
         return aircraft_list
 
