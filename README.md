@@ -19,7 +19,7 @@
  * $15 RTL-SDR dongle (NooElec)
  * $6 Coax adapter
  * Coax cable found in my closet
- * Home made cantenna ([instructions here](https://www.adsbexchange.com/forums/topic/beginners-2-cantenna-easy-diy-antenna-to-improve-rangeplane-count/))
+ * Home made cantenna ([instructions here](https://web.archive.org/web/20170909005202/https://www.adsbexchange.com/forums/topic/beginners-2-cantenna-easy-diy-antenna-to-improve-rangeplane-count/))
  
 ## Future Plans
 * Hopefully very soon it will be included in jprochazka's wonderful [adsb-receiver](https://github.com/jprochazka/adsb-receiver) project, which will simplify the instalation process for those who would like to create their own twitter bots.
