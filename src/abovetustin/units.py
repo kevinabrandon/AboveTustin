@@ -31,6 +31,8 @@ import pint
 
 ureg = pint.UnitRegistry()
 Quantity = ureg.Quantity
+#: Raised by parse() for a bare number or a quantity of the wrong dimension.
+DimensionalityError = pint.DimensionalityError
 
 
 def si(quantity: pint.Quantity) -> float:
