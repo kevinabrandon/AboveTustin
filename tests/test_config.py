@@ -8,8 +8,8 @@ EXAMPLE = Path(__file__).resolve().parents[1] / "config.example.toml"
 
 MINIMAL = """
 [receiver]
-latitude_deg = 33.754271
-longitude_deg = -117.823096
+latitude_deg = 33.7458
+longitude_deg = -117.8261
 
 [tracker]
 distance_alarm = "2 km"
@@ -17,9 +17,9 @@ elevation_alarm_deg = 45
 """
 
 
-def test_example_file_parses_to_the_v1_values():
+def test_example_file_parses():
     cfg = config.load(EXAMPLE)
-    assert cfg.receiver == (33.754271, -117.823096)
+    assert cfg.receiver == (33.7458, -117.8261)
     assert cfg.source.url == "http://localhost/tar1090/data/aircraft.json"
     assert cfg.source.poll_interval_s == 1.0
     assert cfg.source.timeout_s == 10.0

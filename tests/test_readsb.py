@@ -7,8 +7,8 @@ import pytest
 from abovetustin import geomath
 from abovetustin.source import readsb
 
-# The v1 receiver position, which every fixture is translated onto.
-RECEIVER = (33.754271, -117.823096)
+# Tustin, CA, which every fixture is translated onto.
+RECEIVER = (33.7458, -117.8261)
 
 # Empty files are a recorder still at work, not fixtures.
 FIXTURES = sorted(
@@ -33,8 +33,8 @@ def sample_document():
                 "track": 312.4,
                 "baro_rate": -1024,
                 "squawk": "2200",
-                "lat": 33.764271,  # 0.01 deg north of the receiver
-                "lon": -117.823096,
+                "lat": 33.7558,  # 0.01 deg north of the receiver
+                "lon": -117.8261,
                 "seen_pos": 0.3,
                 "rssi": -12.5,
                 "seen": 0.1,

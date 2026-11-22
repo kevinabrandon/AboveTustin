@@ -6,9 +6,9 @@
 # numbers in degrees.
 
 [receiver]
-# Where the antenna is. These are the original 2016 Tustin coordinates.
-latitude_deg = 33.754271
-longitude_deg = -117.823096
+# Where the antenna is. These are the coordinates of Tustin, CA.
+latitude_deg = 33.7458
+longitude_deg = -117.8261
 
 [source]
 # readsb's aircraft.json, usually served by tar1090.
