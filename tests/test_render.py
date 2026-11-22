@@ -41,9 +41,25 @@ class TestPageUrl:
         assert "Range rings" in tar1090.RECEIVER_LAYERS
 
 
-def test_renderer_centre_is_snapped():
-    r = tar1090.Tar1090Renderer(CONFIG, (33.7458, -117.8261))
-    assert r.center == (33.7, -117.8)
+class TestCentreAndRings:
+    def test_grid_centre_is_snapped(self):
+        r = tar1090.Tar1090Renderer(CONFIG, (33.7458, -117.8261))
+        assert r.center == (33.7, -117.8)
+
+    def test_receiver_centre_is_exact(self):
+        config = tar1090.RenderConfig(url=CONFIG.url, center="receiver")
+        assert tar1090.Tar1090Renderer(config, (33.7458, -117.8261)).center == (33.7458, -117.8261)
+
+    def test_unknown_centre_is_rejected(self):
+        with pytest.raises(ValueError, match="center must be one of"):
+            tar1090.map_center(tar1090.RenderConfig(url=CONFIG.url, center="house"), (0.0, 0.0))
+
+    def test_default_rings_are_one_two_five_miles(self):
+        assert tar1090.ring_distances_mi(CONFIG) == pytest.approx([1.0, 2.0, 5.0])
+
+    def test_rings_convert_from_si(self):
+        config = tar1090.RenderConfig(url=CONFIG.url, ring_distances_m=(1609.344, 8046.72))
+        assert tar1090.ring_distances_mi(config) == pytest.approx([1.0, 5.0])
 
 
 @pytest.mark.skipif(

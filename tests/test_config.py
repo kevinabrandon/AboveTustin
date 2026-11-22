@@ -32,6 +32,9 @@ def test_example_file_parses():
     assert cfg.render.url == "http://localhost/tar1090/"
     assert cfg.render.zoom == 11
     assert cfg.render.grid_deg == 0.1
+    assert cfg.render.center == "grid"
+    assert cfg.render.show_receiver is False
+    assert cfg.render.ring_distances_m == pytest.approx((1609.344, 3218.688, 8046.72))
     assert cfg.render.reload_after_s == 3600.0
     assert cfg.image_dir == Path("~/.local/share/abovetustin/images").expanduser()
 
@@ -41,6 +44,25 @@ def test_render_can_be_disabled():
     assert cfg.render is None
     with pytest.raises(config.ConfigError, match="enabled must be true or false"):
         config.parse(MINIMAL + '[render]\nenabled = "no"\n')
+
+
+def test_render_centred_on_the_receiver_with_rings():
+    cfg = config.parse(
+        MINIMAL + '[render]\ncenter = "receiver"\nshow_receiver = true\nring_distances = ["2 km"]\n'
+    )
+    assert cfg.render is not None
+    assert cfg.render.center == "receiver"
+    assert cfg.render.show_receiver is True
+    assert cfg.render.ring_distances_m == (2000.0,)
+
+
+def test_render_bad_centre_and_rings():
+    with pytest.raises(config.ConfigError, match="center must be one of grid, receiver"):
+        config.parse(MINIMAL + '[render]\ncenter = "house"\n')
+    with pytest.raises(config.ConfigError, match="ring_distances must be a list"):
+        config.parse(MINIMAL + '[render]\nring_distances = "1 mi"\n')
+    with pytest.raises(config.ConfigError, match="not a quantity compatible with 'm'"):
+        config.parse(MINIMAL + '[render]\nring_distances = ["1 mi", "30 s"]\n')
 
 
 def test_minimal_file_fills_defaults():

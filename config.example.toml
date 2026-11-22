@@ -38,9 +38,15 @@ url = "http://localhost/tar1090/"
 zoom = 11
 width_px = 1280
 height_px = 720
-# The map is centred on the receiver position snapped to this grid, not on the
-# receiver itself, so many posts do not point at one spot.
+# Where the map is centred. "grid" snaps the receiver position to a grid of
+# grid_deg so that many posts do not point at one spot; "receiver" centres on
+# the receiver itself. Use "receiver" and show_receiver when the receiver is
+# not somewhere you mind people knowing about.
+center = "grid"
 grid_deg = 0.1
+# Draw the receiver marker and distance rings around it.
+show_receiver = false
+ring_distances = ["1 mi", "2 mi", "5 mi"]
 # Playwright browser channel: "chrome" or "msedge" for an installed browser,
 # "" for the chromium that `playwright install chromium` downloads.
 browser_channel = "chrome"

@@ -16,7 +16,7 @@ from typing import Any
 
 from abovetustin import units
 from abovetustin.geomath import LatLonDeg
-from abovetustin.render.tar1090 import RenderConfig
+from abovetustin.render.tar1090 import CENTER_MODES, RenderConfig
 from abovetustin.tracker import TrackerConfig
 
 DEFAULT_PATH = Path("~/.config/abovetustin/config.toml")
@@ -91,7 +91,12 @@ def parse(text: str) -> Config:
                 zoom=render.integer("zoom", 11),
                 width_px=render.integer("width_px", 1280),
                 height_px=render.integer("height_px", 720),
+                center=render.choice("center", CENTER_MODES, "grid"),
                 grid_deg=render.number("grid_deg", 0.1),
+                show_receiver=render.boolean("show_receiver", False),
+                ring_distances_m=tuple(
+                    render.quantities("ring_distances", "m", ["1 mi", "2 mi", "5 mi"])
+                ),
                 browser_channel=render.string("browser_channel", "chrome"),
                 reload_after_s=render.quantity("reload_after", "s", "1 h"),
             )
@@ -129,6 +134,32 @@ class _Section:
             raise ConfigError(f"[{self.name}] {key} must be a string")
         return value
 
+    def choice(self, key: str, choices: tuple[str, ...], default: str) -> str:
+        value = self.string(key, default)
+        if value not in choices:
+            raise ConfigError(f"[{self.name}] {key} must be one of {', '.join(choices)}")
+        return value
+
+    def quantities(self, key: str, like: str, default: list[str]) -> list[float]:
+        """A list of strings with units, each returned as an SI magnitude."""
+        values = self._get(key, default)
+        if not isinstance(values, list) or not all(isinstance(v, str) for v in values):
+            raise ConfigError(
+                f'[{self.name}] {key} must be a list of strings with units, like ["1 mi"]'
+            )
+        out = []
+        for value in values:
+            try:
+                out.append(units.parse(value, like))
+            except Exception as exc:
+                raise self._not_a_quantity(key, value, like, exc) from None
+        return out
+
+    def _not_a_quantity(self, key: str, value: str, like: str, exc: Exception) -> ConfigError:
+        return ConfigError(
+            f"[{self.name}] {key}: {value!r} is not a quantity compatible with {like!r} ({exc})"
+        )
+
     def boolean(self, key: str, default: bool) -> bool:
         value = self._get(key, default)
         if not isinstance(value, bool):
@@ -159,6 +190,4 @@ class _Section:
         try:
             return units.parse(value, like)
         except Exception as exc:  # DimensionalityError, UndefinedUnitError, parse errors
-            raise ConfigError(
-                f"[{self.name}] {key}: {value!r} is not a quantity compatible with {like!r} ({exc})"
-            ) from None
+            raise self._not_a_quantity(key, value, like, exc) from None

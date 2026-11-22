@@ -7,12 +7,16 @@ sightings because that is where the trail history lives: readsb's JSON only
 carries current positions, and tar1090 accumulates the track in the page as
 the aircraft is watched.
 
-Privacy: the page is opened with the receiver's range rings and range
-outline switched off, the layer with the receiver marker is hidden, and the
-info panel (which prints the aircraft's distance from the receiver) is
-suppressed. The map is centred not on the aircraft or the receiver but on
-the receiver position snapped to a coarse grid, so the centres of many
-posts cluster on a grid point rather than on a house.
+Privacy, by default: the page is opened with the receiver's range rings
+and range outline switched off, the layer with the receiver marker is
+hidden, and the info panel (which prints the aircraft's distance from the
+receiver) is suppressed. The map is centred not on the aircraft or the
+receiver but on the receiver position snapped to a coarse grid, so the
+centres of many posts cluster on a grid point rather than on a house.
+
+Not every receiver is a home. ``center = "receiver"`` centres the map on
+the receiver, and ``show_receiver = true`` draws tar1090's receiver marker
+with range rings at ``ring_distances`` around it.
 """
 
 from __future__ import annotations
@@ -22,6 +26,7 @@ import time
 from dataclasses import dataclass
 from urllib.parse import urlencode
 
+from abovetustin import units
 from abovetustin.geomath import LatLonDeg
 
 log = logging.getLogger(__name__)
@@ -32,6 +37,19 @@ RECEIVER_LAYERS = ("Site position", "Range rings", "actual range outline")
 _HIDE_LAYERS_JS = """(titles) => OLMap.getLayers().getArray().forEach(layer => {
     if (titles.includes(layer.get('title'))) layer.setVisible(false);
 })"""
+_SHOW_LAYERS_JS = """(titles) => OLMap.getLayers().getArray().forEach(layer => {
+    if (titles.includes(layer.get('title'))) layer.setVisible(true);
+})"""
+# Rings are drawn in tar1090's display units; switch the page to statute
+# miles so the ring labels read like the posts do.
+_DRAW_RINGS_JS = """(miles) => {
+    DisplayUnits = 'imperial';
+    SiteCircles = true;
+    SiteCirclesDistances = miles;
+    SiteCirclesColors = ['#444444'];
+    SiteCirclesLineDash = [6, 6];
+    drawSiteCircle();
+}"""
 _HIDE_PANELS_CSS = "#selected_infoblock, #sidebar_container { display: none !important; }"
 _SELECT_JS = """([hex, lat, lon, zoom]) => {
     if (!g.planes[hex]) return false;
@@ -47,6 +65,10 @@ class RenderError(Exception):
     pass
 
 
+CENTER_MODES = ("grid", "receiver")
+DEFAULT_RING_DISTANCES_M = tuple(units.parse(f"{n} mi", "m") for n in (1, 2, 5))
+
+
 @dataclass(frozen=True, slots=True)
 class RenderConfig:
     #: The tar1090 page, e.g. ``http://localhost/tar1090/``.
@@ -54,8 +76,12 @@ class RenderConfig:
     zoom: int = 11
     width_px: int = 1280
     height_px: int = 720
-    #: The map centre is the receiver position snapped to this grid.
+    #: "grid": the receiver position snapped to grid_deg; "receiver": the receiver itself.
+    center: str = "grid"
     grid_deg: float = 0.1
+    #: Draw tar1090's receiver marker and range rings.
+    show_receiver: bool = False
+    ring_distances_m: tuple[float, ...] = DEFAULT_RING_DISTANCES_M
     #: Playwright browser channel: "chrome", "msedge", or "" for its own chromium.
     browser_channel: str = "chrome"
     #: Reload the page this often, when nothing is being tracked, to keep its memory in check.
@@ -70,9 +96,22 @@ def snap(position: LatLonDeg, grid_deg: float) -> LatLonDeg:
     )
 
 
+def map_center(config: RenderConfig, receiver: LatLonDeg) -> LatLonDeg:
+    if config.center == "receiver":
+        return receiver
+    if config.center == "grid":
+        return snap(receiver, config.grid_deg)
+    raise ValueError(f"center must be one of {CENTER_MODES}, not {config.center!r}")
+
+
+def ring_distances_mi(config: RenderConfig) -> list[float]:
+    """Ring radii in statute miles, which is how tar1090 is told to draw them."""
+    return [units.Quantity(d_m, "m").to("mi").magnitude for d_m in config.ring_distances_m]
+
+
 def page_url(config: RenderConfig, center: LatLonDeg) -> str:
-    """The tar1090 URL the renderer opens: centred, quiet, and with the
-    receiver's rings and outline off."""
+    """The tar1090 URL the renderer opens: centred and quiet. The receiver's
+    rings and outline are off here and turned back on after load when asked."""
     params = {
         "lat": f"{center[0]:.4f}",
         "lon": f"{center[1]:.4f}",
@@ -95,7 +134,7 @@ class Tar1090Renderer:
 
     def __init__(self, config: RenderConfig, receiver: LatLonDeg) -> None:
         self.config = config
-        self.center = snap(receiver, config.grid_deg)
+        self.center = map_center(config, receiver)
         self._playwright = None
         self._browser = None
         self._page = None
@@ -133,6 +172,9 @@ class Tar1090Renderer:
             page_url(self.config, self.center), wait_until="networkidle", timeout=60_000
         )
         self._page.evaluate(_HIDE_LAYERS_JS, list(RECEIVER_LAYERS))
+        if self.config.show_receiver:
+            self._page.evaluate(_SHOW_LAYERS_JS, ["Site position", "Range rings"])
+            self._page.evaluate(_DRAW_RINGS_JS, ring_distances_mi(self.config))
         self._page.add_style_tag(content=_HIDE_PANELS_CSS)
         self._opened_at = time.monotonic()
         log.info("tar1090 page open at %s", page_url(self.config, self.center))
