@@ -11,6 +11,9 @@ dependencies = [
     "pint>=0.26.2",
 ]
 
+[project.scripts]
+abovetustin = "abovetustin.main:main"
+
 [project.urls]
 Repository = "https://github.com/kevinabrandon/AboveTustin"
 
@@ -33,7 +36,6 @@ target-version = "py312"
 # v1 modules still at the repo root. Each one is removed from this list in the
 # pull request that replaces it.
 extend-exclude = [
-    "fa_api.py",
     "screenshot.py",
 ]
 
