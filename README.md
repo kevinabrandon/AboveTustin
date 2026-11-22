@@ -13,7 +13,9 @@
 > from [readsb](https://github.com/wiedehopf/readsb) and
 > [tar1090](https://github.com/wiedehopf/tar1090) instead of dump1090, posts to
 > Bluesky instead of Twitter, and is a proper Python 3.12 package with tests and CI
-> instead of a handful of scripts. The alarm-zone tracking logic from v1 carries over.
+> instead of a handful of scripts. Internally everything is in SI units, with
+> conversions to the feet and miles in the posts handled at the edges by pint. The
+> alarm-zone tracking logic from v1 carries over.
 
 [AboveTustin](https://twitter.com/abovetustin) is an ADS-B Twitter Bot running on a Raspberry Pi 2.  It tracks airplanes and then tweets whenever an airplane flies overhead.
 
@@ -44,6 +46,7 @@
  * Some even more future day use OpenCV to video detect and track airplanes.
 
 ## Dependencies
+* v2 uses [pint](https://pint.readthedocs.io/) for unit handling; see `CONTRIBUTING.md` for the unit policy.
 * Uses [dump1090-mutability](https://github.com/mutability/dump1090) for ADSB message decoding, airplane tracking, and webserving.
 * Uses [twitter](https://pypi.python.org/pypi/twitter) for tweeting.
 * Uses [selenium](https://pypi.python.org/pypi/selenium) with [PhantomJS](http://phantomjs.org/) for capturing screenshots.
