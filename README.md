@@ -1,4 +1,20 @@
 # AboveTustin
+
+> **Status, November 2026:** AboveTustin is being rebuilt. The original Raspberry Pi
+> bot described below stopped working when the services it depended on
+> (dump1090-mutability, PhantomJS, the Twitter v1.1 API, FlightAware FlightXML3) were
+> retired. Its final code is preserved at tag
+> [`v1.0.0`](https://github.com/kevinabrandon/AboveTustin/tree/v1.0.0). The rebuild
+> is landing on `master` as a series of small pull requests, so `master` is a work in
+> progress until the new bot runs.
+>
+> The idea stays the same: watch a local ADS-B receiver, notice when an aircraft passes
+> close overhead, and post a short note with a map of its track. Underneath, v2 reads
+> from [readsb](https://github.com/wiedehopf/readsb) and
+> [tar1090](https://github.com/wiedehopf/tar1090) instead of dump1090, posts to
+> Bluesky instead of Twitter, and is a proper Python 3.12 package with tests and CI
+> instead of a handful of scripts. The alarm-zone tracking logic from v1 carries over.
+
 [AboveTustin](https://twitter.com/abovetustin) is an ADS-B Twitter Bot running on a Raspberry Pi 2.  It tracks airplanes and then tweets whenever an airplane flies overhead.
 
  * Uses [dump1090-mutability](https://github.com/mutability/dump1090) for ADSB message decoding, airplane tracking, and webserving.
