@@ -11,11 +11,15 @@ from __future__ import annotations
 
 import tomllib
 from dataclasses import dataclass
+from datetime import time
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from abovetustin import units
 from abovetustin.geomath import LatLonDeg
+from abovetustin.post.bluesky import BlueskyConfig
+from abovetustin.post.template import PostConfig, Rule, TemplateError, validate_template
 from abovetustin.render.tar1090 import CENTER_MODES, RenderConfig
 from abovetustin.tracker import TrackerConfig
 
@@ -24,6 +28,31 @@ DEFAULT_LOG_PATH = Path("~/.local/share/abovetustin/sightings.jsonl")
 DEFAULT_SOURCE_URL = "http://localhost/tar1090/data/aircraft.json"
 DEFAULT_RENDER_URL = "http://localhost/tar1090/"
 DEFAULT_IMAGE_DIR = Path("~/.local/share/abovetustin/images")
+#: The v1 tweet template.
+DEFAULT_TEMPLATE = (
+    "#${flight} : ${dist_mi} mi away @ ${alt_ft} ft and ${el}° frm hrzn, "
+    "heading ${heading} @ ${speed_mph}mi/h ${time}."
+)
+
+#: Rule keys, how each is parsed, and the Rule field it sets.
+_RULE_QUANTITIES = {
+    "altitude_min": ("m", "altitude_min_m"),
+    "altitude_max": ("m", "altitude_max_m"),
+    "distance_min": ("m", "distance_min_m"),
+    "distance_max": ("m", "distance_max_m"),
+    "speed_min": ("m/s", "speed_min_m_per_s"),
+    "speed_max": ("m/s", "speed_max_m_per_s"),
+    "vertical_rate_min": ("m/s", "vertical_rate_min_m_per_s"),
+    "vertical_rate_max": ("m/s", "vertical_rate_max_m_per_s"),
+}
+_RULE_ANGLES = ("elevation_min_deg", "elevation_max_deg", "heading_min_deg", "heading_max_deg")
+_RULE_FLAGS = ("anonymous", "on_ground")
+_RULE_KEYS = (
+    {"tag", "template", "hours", "weekdays"}
+    | set(_RULE_QUANTITIES)
+    | set(_RULE_ANGLES)
+    | set(_RULE_FLAGS)
+)
 
 
 class ConfigError(Exception):
@@ -48,6 +77,9 @@ class Config:
     render: RenderConfig | None
     #: Where rendered images are kept.
     image_dir: Path
+    post: PostConfig
+    #: None when no Bluesky account is configured; the bot then only logs.
+    bluesky: BlueskyConfig | None
 
 
 def load(path: Path = DEFAULT_PATH) -> Config:
@@ -70,6 +102,8 @@ def parse(text: str) -> Config:
     tracker = _Section(data, "tracker")
     log = _Section(data, "log", required=False)
     render = _Section(data, "render", required=False)
+    post = _Section(data, "post", required=False)
+    bluesky = _Section(data, "bluesky", required=False)
 
     return Config(
         receiver=(receiver.number("latitude_deg"), receiver.number("longitude_deg")),
@@ -104,7 +138,55 @@ def parse(text: str) -> Config:
             else None
         ),
         image_dir=Path(render.string("image_dir", str(DEFAULT_IMAGE_DIR))).expanduser(),
+        post=PostConfig(
+            template=post.template("template", DEFAULT_TEMPLATE),
+            hashtags=tuple(post.strings("hashtags", [])),
+            rules=tuple(_rule(post, i, raw) for i, raw in enumerate(post.tables("rules"))),
+            tz=post.timezone("timezone"),
+        ),
+        bluesky=(
+            BlueskyConfig(
+                handle=bluesky.string("handle"),
+                app_password=bluesky.string("app_password"),
+                service=bluesky.string("service", "https://bsky.social"),
+            )
+            if bluesky.table
+            else None
+        ),
     )
+
+
+def _rule(post: _Section, index: int, raw: Any) -> Rule:
+    section = _Section({"rule": raw}, "rule")
+    section.name = f"post.rules[{index}]"
+    unknown = sorted(set(section.table) - _RULE_KEYS)
+    if unknown:
+        raise ConfigError(f"[{section.name}] unknown key(s): {', '.join(unknown)}")
+    if "tag" not in section.table and "template" not in section.table:
+        raise ConfigError(f"[{section.name}] needs a tag or a template")
+    fields: dict[str, Any] = {}
+    if "tag" in section.table:
+        fields["tag"] = section.string("tag")
+    if "template" in section.table:
+        fields["template"] = section.template("template")
+    for key, (like, field) in _RULE_QUANTITIES.items():
+        if key in section.table:
+            fields[field] = section.quantity(key, like)
+    for key in _RULE_ANGLES:
+        if key in section.table:
+            fields[key] = section.number(key)
+    for key in _RULE_FLAGS:
+        if key in section.table:
+            fields[key] = section.boolean(key, False)
+    if "hours" in section.table:
+        fields["hours"] = section.hours("hours")
+    if "weekdays" in section.table:
+        days = [d.lower()[:3] for d in section.strings("weekdays")]
+        bad = [d for d in days if d not in ("mon", "tue", "wed", "thu", "fri", "sat", "sun")]
+        if bad:
+            raise ConfigError(f"[{section.name}] weekdays: unknown day(s) {', '.join(bad)}")
+        fields["weekdays"] = frozenset(days)
+    return Rule(**fields)
 
 
 class _Section:
@@ -159,6 +241,47 @@ class _Section:
         return ConfigError(
             f"[{self.name}] {key}: {value!r} is not a quantity compatible with {like!r} ({exc})"
         )
+
+    def strings(self, key: str, default: list[str] | None = None) -> list[str]:
+        values = self._get(key, default)
+        if not isinstance(values, list) or not all(isinstance(v, str) for v in values):
+            raise ConfigError(f"[{self.name}] {key} must be a list of strings")
+        return values
+
+    def tables(self, key: str) -> list[dict[str, Any]]:
+        values = self.table.get(key, [])
+        if not isinstance(values, list) or not all(isinstance(v, dict) for v in values):
+            raise ConfigError(
+                f"[{self.name}] {key} must be an array of tables ([[{self.name}.{key}]])"
+            )
+        return values
+
+    def template(self, key: str, default: str | None = None) -> str:
+        text = self.string(key, default)
+        try:
+            validate_template(text)
+        except TemplateError as exc:
+            raise ConfigError(f"[{self.name}] {key}: {exc}") from None
+        return text
+
+    def timezone(self, key: str) -> ZoneInfo | None:
+        """An IANA zone name, or None (the system's local time) when absent."""
+        if key not in self.table:
+            return None
+        name = self.string(key)
+        try:
+            return ZoneInfo(name)
+        except (ZoneInfoNotFoundError, ValueError):
+            raise ConfigError(f"[{self.name}] {key}: unknown time zone {name!r}") from None
+
+    def hours(self, key: str) -> tuple[time, time]:
+        """A local-time window like "23:00-07:00"."""
+        text = self.string(key)
+        try:
+            start, end = (time.fromisoformat(part.strip()) for part in text.split("-"))
+        except ValueError:
+            raise ConfigError(f'[{self.name}] {key} must look like "23:00-07:00"') from None
+        return (start, end)
 
     def boolean(self, key: str, default: bool) -> bool:
         value = self._get(key, default)
