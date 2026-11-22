@@ -8,6 +8,11 @@ uv run pytest
 uv run ruff check . && uv run ruff format --check .
 ```
 
+The map renderer drives Google Chrome through Playwright. With Chrome installed
+nothing more is needed; otherwise run `uv run playwright install chromium` and set
+`browser_channel = ""` in the config. The browser test is skipped unless
+`ABOVETUSTIN_TAR1090_URL` points at a live tar1090.
+
 ## Workflow
 
 Branch from `master`, keep each commit to one logical change, and open a pull

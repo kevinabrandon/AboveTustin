@@ -36,7 +36,7 @@ A v1 post looked like this:
 | | v1 (2016) | v2 |
 |---|---|---|
 | Receiver | dump1090-mutability on a Raspberry Pi 2 | [readsb](https://github.com/wiedehopf/readsb) + [tar1090](https://github.com/wiedehopf/tar1090) |
-| Map image | PhantomJS driving the dump1090 web map | Playwright screenshot of tar1090, or a self-rendered map |
+| Map image | PhantomJS driving the dump1090 web map | Playwright driving tar1090 in headless Chrome |
 | Posts to | Twitter (v1.1 API) | Bluesky first, then X |
 | Route lookup | FlightAware FlightXML3 | a free ADS-B database, later |
 | Config | `config.ini` next to the code, secrets inside | TOML, with the receiver position and credentials outside the repo |
@@ -51,7 +51,7 @@ A v1 post looked like this:
 - [x] Alarm-zone tracker
 - [x] Configuration, sighting log and a dry-run mode
 - [ ] Default alarm zone tuned against real traffic
-- [ ] Map image of the track
+- [x] Map image of the track
 - [ ] Bluesky posts
 - [ ] Runs as a service and survives a reboot
 - [ ] Route lookup: where it came from, where it is going
