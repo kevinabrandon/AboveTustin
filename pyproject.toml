@@ -35,7 +35,6 @@ target-version = "py312"
 extend-exclude = [
     "fa_api.py",
     "screenshot.py",
-    "tracker.py",
 ]
 
 [tool.ruff.lint]
