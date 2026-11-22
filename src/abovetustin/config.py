@@ -16,11 +16,14 @@ from typing import Any
 
 from abovetustin import units
 from abovetustin.geomath import LatLonDeg
+from abovetustin.render.tar1090 import RenderConfig
 from abovetustin.tracker import TrackerConfig
 
 DEFAULT_PATH = Path("~/.config/abovetustin/config.toml")
 DEFAULT_LOG_PATH = Path("~/.local/share/abovetustin/sightings.jsonl")
 DEFAULT_SOURCE_URL = "http://localhost/tar1090/data/aircraft.json"
+DEFAULT_RENDER_URL = "http://localhost/tar1090/"
+DEFAULT_IMAGE_DIR = Path("~/.local/share/abovetustin/images")
 
 
 class ConfigError(Exception):
@@ -41,6 +44,10 @@ class Config:
     tracker: TrackerConfig
     #: Every sighting is appended here as one JSON line, posted or not.
     log_path: Path
+    #: None when map images are disabled.
+    render: RenderConfig | None
+    #: Where rendered images are kept.
+    image_dir: Path
 
 
 def load(path: Path = DEFAULT_PATH) -> Config:
@@ -62,6 +69,7 @@ def parse(text: str) -> Config:
     source = _Section(data, "source", required=False)
     tracker = _Section(data, "tracker")
     log = _Section(data, "log", required=False)
+    render = _Section(data, "render", required=False)
 
     return Config(
         receiver=(receiver.number("latitude_deg"), receiver.number("longitude_deg")),
@@ -77,6 +85,20 @@ def parse(text: str) -> Config:
             max_position_age_s=tracker.quantity("max_position_age", "s", "30 s"),
         ),
         log_path=Path(log.string("path", str(DEFAULT_LOG_PATH))).expanduser(),
+        render=(
+            RenderConfig(
+                url=render.string("url", DEFAULT_RENDER_URL),
+                zoom=render.integer("zoom", 11),
+                width_px=render.integer("width_px", 1280),
+                height_px=render.integer("height_px", 720),
+                grid_deg=render.number("grid_deg", 0.1),
+                browser_channel=render.string("browser_channel", "chrome"),
+                reload_after_s=render.quantity("reload_after", "s", "1 h"),
+            )
+            if render.boolean("enabled", True)
+            else None
+        ),
+        image_dir=Path(render.string("image_dir", str(DEFAULT_IMAGE_DIR))).expanduser(),
     )
 
 
@@ -107,8 +129,16 @@ class _Section:
             raise ConfigError(f"[{self.name}] {key} must be a string")
         return value
 
-    def number(self, key: str) -> float:
-        value = self._get(key, None)
+    def boolean(self, key: str, default: bool) -> bool:
+        value = self._get(key, default)
+        if not isinstance(value, bool):
+            raise ConfigError(f"[{self.name}] {key} must be true or false")
+        return value
+
+    def number(self, key: str, default_deg: float | None = None) -> float:
+        """A plain number. The only unit-bearing plain numbers in the config are
+        angles in degrees, hence the name of the default."""
+        value = self._get(key, default_deg)
         if isinstance(value, bool) or not isinstance(value, int | float):
             raise ConfigError(f"[{self.name}] {key} must be a number")
         return float(value)

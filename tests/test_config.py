@@ -28,6 +28,19 @@ def test_example_file_parses():
     assert cfg.tracker.wait_updates == 4
     assert cfg.tracker.max_position_age_s == 30.0
     assert cfg.log_path == Path("~/.local/share/abovetustin/sightings.jsonl").expanduser()
+    assert cfg.render is not None
+    assert cfg.render.url == "http://localhost/tar1090/"
+    assert cfg.render.zoom == 11
+    assert cfg.render.grid_deg == 0.1
+    assert cfg.render.reload_after_s == 3600.0
+    assert cfg.image_dir == Path("~/.local/share/abovetustin/images").expanduser()
+
+
+def test_render_can_be_disabled():
+    cfg = config.parse(MINIMAL + "[render]\nenabled = false\n")
+    assert cfg.render is None
+    with pytest.raises(config.ConfigError, match="enabled must be true or false"):
+        config.parse(MINIMAL + '[render]\nenabled = "no"\n')
 
 
 def test_minimal_file_fills_defaults():
@@ -37,6 +50,7 @@ def test_minimal_file_fills_defaults():
     assert cfg.tracker.wait_updates == 4
     assert cfg.source.poll_interval_s == 1.0
     assert cfg.log_path == config.DEFAULT_LOG_PATH.expanduser()
+    assert cfg.render is not None and cfg.render.browser_channel == "chrome"
 
 
 def test_missing_file(tmp_path):
