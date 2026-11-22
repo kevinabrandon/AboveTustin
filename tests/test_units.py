@@ -29,3 +29,14 @@ def test_si_of_quantity():
 
 def test_display_conversion_through_quantity():
     assert units.Quantity(1609.344, "m").to("mi").magnitude == pytest.approx(1.0)
+
+
+class TestParserHelpers:
+    def test_feet_to_metres(self):
+        assert units.m_from_ft(35_000.0) == pytest.approx(10_668.0)
+
+    def test_knots_to_metres_per_second(self):
+        assert units.m_per_s_from_kt(450.0) == pytest.approx(231.5, abs=0.01)
+
+    def test_feet_per_minute_to_metres_per_second(self):
+        assert units.m_per_s_from_ft_per_min(-1024.0) == pytest.approx(-5.2019, abs=1e-4)

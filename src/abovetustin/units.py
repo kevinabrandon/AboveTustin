@@ -46,3 +46,23 @@ def parse(text: str, like: str) -> float:
     ``pint.DimensionalityError``.
     """
     return si(ureg.Quantity(text).to(like))
+
+
+# Factors the readsb parser needs, evaluated by pint once at import so the
+# per-poll loop multiplies plain floats. They are the only place a parser
+# may get a factor from.
+_M_PER_FT = si(Quantity(1, "foot"))
+_M_PER_S_PER_KT = si(Quantity(1, "knot"))
+_M_PER_S_PER_FT_PER_MIN = si(Quantity(1, "foot/minute"))
+
+
+def m_from_ft(length_ft: float) -> float:
+    return length_ft * _M_PER_FT
+
+
+def m_per_s_from_kt(speed_kt: float) -> float:
+    return speed_kt * _M_PER_S_PER_KT
+
+
+def m_per_s_from_ft_per_min(rate_ft_per_min: float) -> float:
+    return rate_ft_per_min * _M_PER_S_PER_FT_PER_MIN
