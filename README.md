@@ -49,7 +49,7 @@ A v1 post looked like this:
 - [x] Geometry in SI units, with the unit convention enforced by tests
 - [x] Aircraft model and readsb parser, with recorded fixtures
 - [x] Alarm-zone tracker
-- [ ] Configuration, sighting log and a dry-run mode
+- [x] Configuration, sighting log and a dry-run mode
 - [ ] Default alarm zone tuned against real traffic
 - [ ] Map image of the track
 - [ ] Bluesky posts
