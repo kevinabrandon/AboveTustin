@@ -47,8 +47,18 @@ def _is_boundary(rel: str) -> bool:
     return rel.startswith(BOUNDARY)
 
 
-def _mentions_float(annotation: ast.expr | None) -> bool:
-    return annotation is not None and "float" in ast.unparse(annotation)
+def _is_float(annotation: ast.expr | None) -> bool:
+    """True for ``float``, ``float | None`` and ``Optional[float]``; not for a
+    container or callable that merely mentions float."""
+    match annotation:
+        case ast.Name(id="float"):
+            return True
+        case ast.BinOp(op=ast.BitOr(), left=left, right=right):
+            return _is_float(left) or _is_float(right)
+        case ast.Subscript(value=ast.Name(id="Optional"), slice=inner):
+            return _is_float(inner)
+        case _:
+            return False
 
 
 def _suffix_ok(name: str, rel: str) -> bool:
@@ -67,14 +77,14 @@ def test_float_names_carry_a_unit_suffix():
             if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
                 args = node.args
                 for arg in [*args.posonlyargs, *args.args, *args.kwonlyargs]:
-                    if _mentions_float(arg.annotation) and not _suffix_ok(arg.arg, rel):
+                    if _is_float(arg.annotation) and not _suffix_ok(arg.arg, rel):
                         violations.append(f"{rel}:{arg.lineno} parameter {arg.arg!r}")
             elif isinstance(node, ast.ClassDef):
                 for item in node.body:
                     if (
                         isinstance(item, ast.AnnAssign)
                         and isinstance(item.target, ast.Name)
-                        and _mentions_float(item.annotation)
+                        and _is_float(item.annotation)
                         and not _suffix_ok(item.target.id, rel)
                     ):
                         violations.append(f"{rel}:{item.lineno} field {item.target.id!r}")

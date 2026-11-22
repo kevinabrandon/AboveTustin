@@ -33,5 +33,5 @@ offending names.
 
 The receiver is someone's home. Nothing in the repository may contain or imply
 a real receiver position: the example config and the test fixtures use the
-original v1 location in Tustin, CA (33.754271, -117.823096), and real
+coordinates of Tustin, CA (33.7458, -117.8261), and real
 coordinates and credentials live in a config file outside the repo.

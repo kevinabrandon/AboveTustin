@@ -8,7 +8,7 @@ from abovetustin.aircraft import Aircraft
 from abovetustin.source import readsb
 from abovetustin.tracker import Sighting, Tracker, TrackerConfig
 
-RECEIVER = (33.754271, -117.823096)
+RECEIVER = (33.7458, -117.8261)
 # Empty files are a recorder still at work, not fixtures.
 FIXTURES = sorted(
     p for p in (Path(__file__).parent / "fixtures" / "readsb").glob("*.jsonl") if p.stat().st_size

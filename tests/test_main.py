@@ -1,0 +1,138 @@
+import logging
+from datetime import UTC, datetime, timedelta
+
+import pytest
+
+from abovetustin import main
+from abovetustin.aircraft import Aircraft
+from abovetustin.source.readsb import Snapshot
+from abovetustin.tracker import Tracker, TrackerConfig
+
+T0 = datetime(2026, 1, 1, tzinfo=UTC)
+CONFIG = TrackerConfig(distance_alarm_m=1609.344, elevation_alarm_deg=50.0, wait_updates=2)
+
+
+def aircraft(distance_m: float, poll: int) -> Aircraft:
+    return Aircraft(
+        hex="a1b2c3",
+        flight="TEST001",
+        registration=None,
+        aircraft_type=None,
+        lat_deg=0.0,
+        lon_deg=0.0,
+        altitude_m=500.0,
+        on_ground=False,
+        ground_speed_m_per_s=100.0,
+        track_deg=90.0,
+        vertical_rate_m_per_s=None,
+        squawk=None,
+        rssi_db=None,
+        seen_s=0.0,
+        seen_pos_s=0.0,
+        distance_m=distance_m,
+        bearing_deg=0.0,
+        elevation_deg=10.0,
+        observed_at=T0 + timedelta(seconds=poll),
+    )
+
+
+def snapshots(*distances_m: float | None) -> list[Snapshot]:
+    """One snapshot per entry; None is an empty sky."""
+    return [
+        Snapshot(T0 + timedelta(seconds=i), 0, () if d is None else (aircraft(d, i),))
+        for i, d in enumerate(distances_m)
+    ]
+
+
+class FakeSource:
+    def __init__(self, items):
+        self.items = list(items)
+        self.calls = 0
+
+    def __call__(self):
+        self.calls += 1
+        item = self.items.pop(0)
+        if isinstance(item, Exception):
+            raise item
+        return item
+
+
+def test_one_pass_reaches_every_sink():
+    source = FakeSource(snapshots(5000.0, 800.0, 300.0, 5000.0, None))
+    seen_a, seen_b, sleeps = [], [], []
+    count = main.poll_loop(
+        source,
+        Tracker(CONFIG),
+        [seen_a.append, seen_b.append],
+        interval_s=0.5,
+        sleep=sleeps.append,
+        max_polls=5,
+    )
+    assert count == 1
+    assert [s.closest.distance_m for s in seen_a] == [300.0]
+    assert seen_b == seen_a
+    assert sleeps == [0.5] * 5
+
+
+def test_repeated_snapshot_is_not_a_new_poll():
+    same = snapshots(800.0)[0]
+    # Same observed_at three times, then nothing: only one tracker update happens,
+    # so the two misses needed to complete never accrue.
+    source = FakeSource([same, same, same])
+    seen = []
+    main.poll_loop(source, Tracker(CONFIG), [seen.append], 0, sleep=lambda s: None, max_polls=3)
+    assert seen == []
+
+
+def test_fetch_failure_is_logged_and_skipped(caplog):
+    good = snapshots(800.0, None, None)
+    source = FakeSource([good[0], ConnectionError("boom"), good[1], good[2]])
+    seen = []
+    with caplog.at_level(logging.WARNING, logger="abovetustin"):
+        count = main.poll_loop(
+            source, Tracker(CONFIG), [seen.append], 0, sleep=lambda s: None, max_polls=4
+        )
+    assert count == 1
+    assert "fetch failed: boom" in caplog.text
+
+
+def test_failing_sink_does_not_stop_the_others(caplog):
+    def bad(sighting):
+        raise RuntimeError("no")
+
+    seen = []
+    source = FakeSource(snapshots(800.0, None, None))
+    with caplog.at_level(logging.ERROR, logger="abovetustin"):
+        main.poll_loop(
+            source, Tracker(CONFIG), [bad, seen.append], 0, sleep=lambda s: None, max_polls=3
+        )
+    assert len(seen) == 1
+    assert "sink" in caplog.text and "failed" in caplog.text
+
+
+def test_tracking_and_sighting_are_logged(caplog):
+    source = FakeSource(snapshots(800.0, None, None))
+    with caplog.at_level(logging.INFO, logger="abovetustin"):
+        main.poll_loop(source, Tracker(CONFIG), [], 0, sleep=lambda s: None, max_polls=3)
+    messages = [r.getMessage() for r in caplog.records]
+    assert messages[0].startswith("tracking TEST001: 0.5 mi away at 1,640 ft")
+    assert messages[1].startswith("sighting TEST001: 0.5 mi away")
+
+
+class TestCli:
+    def test_missing_config_is_a_usage_error(self, tmp_path, capsys):
+        with pytest.raises(SystemExit) as exc:
+            main.main(["run", "--config", str(tmp_path / "none.toml"), "--dry-run"])
+        assert exc.value.code == 2
+        assert "no config file" in capsys.readouterr().err
+
+    def test_posting_is_refused_until_a_backend_exists(self, tmp_path, capsys):
+        cfg = tmp_path / "c.toml"
+        cfg.write_text(
+            "[receiver]\nlatitude_deg = 1\nlongitude_deg = 2\n[tracker]\n"
+            'distance_alarm = "1 mi"\nelevation_alarm_deg = 50\n'
+        )
+        with pytest.raises(SystemExit) as exc:
+            main.main(["run", "--config", str(cfg)])
+        assert exc.value.code == 2
+        assert "--dry-run" in capsys.readouterr().err

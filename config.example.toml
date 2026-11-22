@@ -1,0 +1,32 @@
+# AboveTustin configuration.
+#
+# Copy to ~/.config/abovetustin/config.toml, set the receiver position, and
+# keep it out of any repository: the position is where you live. Values with
+# units are strings with units ("1.2 mi", "2 km", "30 s"); angles are plain
+# numbers in degrees.
+
+[receiver]
+# Where the antenna is. These are the coordinates of Tustin, CA.
+latitude_deg = 33.7458
+longitude_deg = -117.8261
+
+[source]
+# readsb's aircraft.json, usually served by tar1090.
+url = "http://localhost/tar1090/data/aircraft.json"
+poll_interval = "1 s"
+timeout = "10 s"
+
+[tracker]
+# An aircraft is in the alarm zone when it is closer than distance_alarm or
+# higher above the horizon than elevation_alarm_deg. These are the values
+# that ran in Tustin; a quieter sky may want a wider zone.
+distance_alarm = "1.2 mi"
+elevation_alarm_deg = 50
+# Consecutive polls out of the zone before the sighting is posted.
+wait_updates = 4
+# A position older than this counts as the aircraft being gone.
+max_position_age = "30 s"
+
+[log]
+# Every sighting is appended here as one JSON line, whether or not it is posted.
+path = "~/.local/share/abovetustin/sightings.jsonl"
