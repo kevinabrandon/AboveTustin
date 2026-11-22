@@ -11,8 +11,10 @@ from pathlib import Path
 
 from abovetustin import config as config_module
 from abovetustin.post import Post
+from abovetustin.post.bluesky import MAX_LENGTH, BlueskyPoster
 from abovetustin.post.images import ImageDirectory
-from abovetustin.post.jsonl import JsonlLog
+from abovetustin.post.jsonl import JsonlLog, read
+from abovetustin.post.template import compose
 from abovetustin.post.text import summary
 from abovetustin.render.tar1090 import RenderError, Tar1090Renderer
 from abovetustin.source import readsb
@@ -80,10 +82,14 @@ def poll_loop(
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="abovetustin")
     commands = parser.add_subparsers(dest="command", required=True)
-    run = commands.add_parser("run", help="poll the receiver and log sightings")
+    run = commands.add_parser("run", help="poll the receiver, log sightings and post them")
     run.add_argument("--config", type=Path, default=config_module.DEFAULT_PATH)
-    run.add_argument("--dry-run", action="store_true", help="log sightings, do not post anywhere")
+    run.add_argument("--dry-run", action="store_true", help="log and render, do not post anywhere")
     run.add_argument("-v", "--verbose", action="store_true")
+    show = commands.add_parser("compose", help="print the post text for logged sightings")
+    show.add_argument("--config", type=Path, default=config_module.DEFAULT_PATH)
+    show.add_argument("--last", type=int, default=10, metavar="N", help="how many, newest last")
+    show.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args(argv)
 
     logging.basicConfig(
@@ -95,13 +101,28 @@ def main(argv: Sequence[str] | None = None) -> int:
         cfg = config_module.load(args.config)
     except config_module.ConfigError as exc:
         parser.exit(2, f"error: {exc}\n")
-    if not args.dry_run:
-        parser.exit(2, "error: no posting backends exist yet; run with --dry-run\n")
+
+    if args.command == "compose":
+        return _compose(cfg, args.last)
+
+    sinks: list[Sink] = [JsonlLog(cfg.log_path).post, ImageDirectory(cfg.image_dir).post]
+    if args.dry_run:
+        mode = "dry run, posting nowhere"
+    elif cfg.bluesky is None:
+        parser.exit(2, "error: no [bluesky] section in the config; add one or run with --dry-run\n")
+    else:
+        poster = BlueskyPoster(cfg.bluesky, cfg.post)
+        try:
+            poster.login()
+        except Exception as exc:
+            parser.exit(2, f"error: Bluesky login as {cfg.bluesky.handle} failed: {exc}\n")
+        sinks.append(poster.post)
+        mode = f"posting to Bluesky as {cfg.bluesky.handle}"
 
     tracker = Tracker(cfg.tracker)
-    sinks: list[Sink] = [JsonlLog(cfg.log_path).post, ImageDirectory(cfg.image_dir).post]
     log.info(
-        "dry run: polling %s every %s s, logging sightings to %s, images to %s",
+        "%s: polling %s every %s s, logging sightings to %s, images to %s",
+        mode,
         cfg.source.url,
         cfg.source.poll_interval_s,
         cfg.log_path,
@@ -126,6 +147,19 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )
     except KeyboardInterrupt:
         log.info("stopped")
+    return 0
+
+
+def _compose(cfg: config_module.Config, last: int) -> int:
+    """Print what the last few logged sightings would post as, for tuning
+    the template and rules without posting."""
+    if not cfg.log_path.exists():
+        print(f"no sighting log at {cfg.log_path}", file=sys.stderr)
+        return 1
+    records = list(read(cfg.log_path))[-last:]
+    for sighting, image_name in records:
+        text = compose(sighting, cfg.post, MAX_LENGTH)
+        print(f"{text}\n    [{len(text)} chars, image: {image_name or 'none'}]")
     return 0
 
 
