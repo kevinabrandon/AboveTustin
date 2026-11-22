@@ -1,35 +1,33 @@
-"""Geometry on the Earth's surface, and the unit conversions the bot reports in.
+"""Geometry on the Earth's surface.
 
-Positions are ``(latitude, longitude)`` pairs in decimal degrees. Distances are
-statute miles and altitudes are feet unless a name says otherwise, which is how
-the posts have always read.
+Positions are ``(latitude_deg, longitude_deg)`` pairs. Lengths are metres,
+angles are degrees; see ``abovetustin.units`` for the policy and the one
+sanctioned exception (angles stay in degrees rather than radians).
 """
 
 import math
 
-EARTH_RADIUS_MI = 3956.0
-FEET_PER_MILE = 5280.0
-KM_PER_MILE = 1.60934
-NM_PER_MILE = 0.868976
-MPH_PER_KNOT = 1.15078
-METERS_PER_FOOT = 0.3048
+#: IUGG mean Earth radius R1 = (2a + b) / 3 for the WGS 84 ellipsoid.
+#: v1 used 3956 statute miles (6 366.6 km), about 0.07 % smaller; posted
+#: distances change in the second decimal place at most.
+EARTH_MEAN_RADIUS_M = 6_371_008.8
 
-type LatLon = tuple[float, float]
+type LatLonDeg = tuple[float, float]
 
 _COMPASS_POINTS = ("N", "NE", "E", "SE", "S", "SW", "W", "NW")
 
 
-def distance(a: LatLon, b: LatLon) -> float:
-    """Great-circle distance between two positions, in statute miles (haversine)."""
+def distance_m(a: LatLonDeg, b: LatLonDeg) -> float:
+    """Great-circle distance between two positions, in metres (haversine)."""
     lat1, lon1 = math.radians(a[0]), math.radians(a[1])
     lat2, lon2 = math.radians(b[0]), math.radians(b[1])
     dlat = lat2 - lat1
     dlon = lon2 - lon1
     h = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
-    return 2 * EARTH_RADIUS_MI * math.asin(math.sqrt(h))
+    return 2 * EARTH_MEAN_RADIUS_M * math.asin(math.sqrt(h))
 
 
-def bearing(a: LatLon, b: LatLon) -> float:
+def bearing_deg(a: LatLonDeg, b: LatLonDeg) -> float:
     """Initial compass bearing from ``a`` to ``b`` in degrees, 0 <= bearing < 360."""
     lat1, lat2 = math.radians(a[0]), math.radians(b[0])
     dlon = math.radians(b[1] - a[1])
@@ -38,35 +36,19 @@ def bearing(a: LatLon, b: LatLon) -> float:
     return math.degrees(math.atan2(x, y)) % 360
 
 
-def elevation_angle(distance_mi: float, altitude_ft: float) -> float:
-    """Angle above the horizon, in degrees, of a point ``altitude_ft`` up and
-    ``distance_mi`` away along the ground.
+def elevation_angle_deg(ground_distance_m: float, altitude_m: float) -> float:
+    """Angle above the horizon of a point ``altitude_m`` up and
+    ``ground_distance_m`` away along the ground.
 
-    Treats the ground as flat, which is fine for the few miles the bot cares
-    about. Directly overhead is 90.
+    Treats the ground as flat, which is fine for the few kilometres the bot
+    cares about. Directly overhead is 90.
     """
-    return math.degrees(math.atan2(altitude_ft, distance_mi * FEET_PER_MILE))
+    return math.degrees(math.atan2(altitude_m, ground_distance_m))
 
 
-def heading_str(heading: float | None) -> str:
-    """Eight-point compass label for a heading in degrees, or ``"?"`` if unknown."""
-    if heading is None:
+def compass_point(heading_deg: float | None) -> str:
+    """Eight-point compass label for a heading, or ``"?"`` if unknown."""
+    if heading_deg is None:
         return "?"
-    index = int(((heading % 360) + 22.5) // 45) % 8
+    index = int(((heading_deg % 360) + 22.5) // 45) % 8
     return _COMPASS_POINTS[index]
-
-
-def knots_to_mph(knots: float) -> float:
-    return knots * MPH_PER_KNOT
-
-
-def miles_to_km(miles: float) -> float:
-    return miles * KM_PER_MILE
-
-
-def miles_to_nm(miles: float) -> float:
-    return miles * NM_PER_MILE
-
-
-def feet_to_meters(feet: float) -> float:
-    return feet * METERS_PER_FOOT
