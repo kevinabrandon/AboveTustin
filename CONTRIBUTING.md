@@ -28,7 +28,9 @@ Inside the package, every plain float is in SI base units and its name says so:
 only at the edges, in the readsb parser, the config loader and the post
 renderer, and conversions there go through [pint](https://pint.readthedocs.io/)
 rather than hand-typed factors. Angles are the one exception and stay in
-degrees (`_deg`).
+degrees (`_deg`). A helper that is generic over units, such as a range check,
+annotates those parameters as `units.Magnitude` rather than `float`; grep for it
+to find every such place.
 
 The full policy is the docstring of `src/abovetustin/units.py`. It is enforced
 by `tests/test_conventions.py`, so a violation fails CI with a list of the

@@ -162,13 +162,56 @@ class TestCli:
         assert exc.value.code == 2
         assert "no config file" in capsys.readouterr().err
 
-    def test_posting_is_refused_until_a_backend_exists(self, tmp_path, capsys):
+    MINIMAL = (
+        "[receiver]\nlatitude_deg = 1\nlongitude_deg = 2\n[tracker]\n"
+        'distance_alarm = "1 mi"\nelevation_alarm_deg = 50\n'
+    )
+
+    def test_live_run_needs_a_bluesky_section(self, tmp_path, capsys):
         cfg = tmp_path / "c.toml"
-        cfg.write_text(
-            "[receiver]\nlatitude_deg = 1\nlongitude_deg = 2\n[tracker]\n"
-            'distance_alarm = "1 mi"\nelevation_alarm_deg = 50\n'
-        )
+        cfg.write_text(self.MINIMAL)
         with pytest.raises(SystemExit) as exc:
             main.main(["run", "--config", str(cfg)])
         assert exc.value.code == 2
-        assert "--dry-run" in capsys.readouterr().err
+        assert "no [bluesky] section" in capsys.readouterr().err
+
+    def test_live_run_fails_fast_on_bad_login(self, tmp_path, capsys, monkeypatch):
+        cfg = tmp_path / "c.toml"
+        cfg.write_text(self.MINIMAL + '[bluesky]\nhandle = "a.b"\napp_password = "nope"\n')
+
+        def refuse(self):
+            raise RuntimeError("401 Unauthorized")
+
+        monkeypatch.setattr(main.BlueskyPoster, "login", refuse)
+        with pytest.raises(SystemExit) as exc:
+            main.main(["run", "--config", str(cfg)])
+        assert exc.value.code == 2
+        err = capsys.readouterr().err
+        assert "Bluesky login as a.b failed: 401 Unauthorized" in err
+        assert "nope" not in err
+
+    def test_compose_prints_the_logged_sightings(self, tmp_path, capsys):
+        from abovetustin.post import Post
+        from abovetustin.post.jsonl import JsonlLog
+        from abovetustin.tracker import Sighting
+
+        log_path = tmp_path / "s.jsonl"
+        sighting = Sighting(aircraft(800.0, 0), T0, T0, 3)
+        JsonlLog(log_path).post(Post(sighting, b"png"))
+        cfg = tmp_path / "c.toml"
+        cfg.write_text(
+            self.MINIMAL
+            + f'[log]\npath = "{log_path}"\n'
+            + '[post]\ntemplate = "${flight} ${dist_mi} mi"\nhashtags = ["#ADSB"]\n'
+        )
+        assert main.main(["compose", "--config", str(cfg), "--last", "5"]) == 0
+        out = capsys.readouterr().out
+        assert out.startswith(
+            "TEST001 0.5 mi #ADSB\n    [20 chars, image: 20260101T000000Z_a1b2c3.png]"
+        )
+
+    def test_compose_without_a_log(self, tmp_path, capsys):
+        cfg = tmp_path / "c.toml"
+        cfg.write_text(self.MINIMAL + f'[log]\npath = "{tmp_path / "none.jsonl"}"\n')
+        assert main.main(["compose", "--config", str(cfg)]) == 1
+        assert "no sighting log" in capsys.readouterr().err

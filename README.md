@@ -59,7 +59,7 @@ A v1 post looked like this:
 - [x] Configuration, sighting log and a dry-run mode
 - [ ] Default alarm zone tuned against real traffic
 - [x] Map image of the track
-- [ ] Bluesky posts
+- [x] Bluesky posts
 - [ ] Runs as a service and survives a reboot
 - [ ] Route lookup: where it came from, where it is going
 - [ ] X posts

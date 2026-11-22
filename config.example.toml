@@ -55,3 +55,64 @@ browser_channel = "chrome"
 # The page is reopened this often, while nothing is tracked, to bound its memory.
 reload_after = "1 h"
 image_dir = "~/.local/share/abovetustin/images"
+
+[post]
+# The text of a post. Placeholders are ${name}; the full list is in
+# src/abovetustin/post/template.py. This is the v1 template.
+template = "#${flight} : ${dist_mi} mi away @ ${alt_ft} ft and ${el}° frm hrzn, heading ${heading} @ ${speed_mph}mi/h ${time}."
+# Appended to every post, after any rule tags, while there is room.
+hashtags = ["#ADSB", "#readsb"]
+# Clock for ${time}, ${date} and the hours/weekdays rules. Default: system local.
+# timezone = "America/Los_Angeles"
+
+# Rules add a hashtag, swap in a different template, or both, when every
+# listed condition holds. Ranges are inclusive. Conditions: altitude_min/max,
+# distance_min/max, speed_min/max, vertical_rate_min/max (strings with units),
+# elevation_min_deg/max_deg, heading_min_deg/max_deg (may wrap through north),
+# hours ("23:00-07:00", may cross midnight), weekdays (["sat", "sun"]),
+# anonymous and on_ground (true/false). These are v1's hashtags.
+[[post.rules]]
+tag = "#AfterHours"
+hours = "23:00-07:00"
+
+[[post.rules]]
+tag = "#2CloseForComfort"
+altitude_max = "1000 ft"
+
+[[post.rules]]
+# v1 tuned this for the approach into John Wayne Airport. Set the heading band
+# for your own airport, or drop the rule.
+tag = "#ProbablyLanding"
+altitude_min = "1000 ft"
+altitude_max = "2500 ft"
+heading_min_deg = 157.5
+heading_max_deg = 247.5
+
+[[post.rules]]
+tag = "#UpInTheClouds"
+altitude_min = "20000 ft"
+altitude_max = "35000 ft"
+
+[[post.rules]]
+tag = "#WayTheHeckUpThere"
+altitude_min = "35000 ft"
+
+[[post.rules]]
+tag = "#MovingQuickly"
+speed_min = "300 mph"
+speed_max = "500 mph"
+
+[[post.rules]]
+tag = "#FlyingFast"
+speed_min = "500 mph"
+
+[[post.rules]]
+# MLAT and TIS-B addresses identify nothing, so do not pretend they are a flight.
+anonymous = true
+template = "Unidentified aircraft ${dist_mi} mi away @ ${alt_ft} ft and ${el}° frm hrzn, heading ${heading} @ ${speed_mph}mi/h ${time}."
+
+# [bluesky]
+# Create an app password in Bluesky's settings; never use the account password.
+# Without this section the bot only logs and renders.
+# handle = "yourbot.bsky.social"
+# app_password = "xxxx-xxxx-xxxx-xxxx"

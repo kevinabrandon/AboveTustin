@@ -70,7 +70,8 @@ def _suffix_ok(name: str, rel: str) -> bool:
 
 def test_float_names_carry_a_unit_suffix():
     """Rule 1: float parameters, dataclass fields and numeric module constants
-    are named with their unit."""
+    are named with their unit. A parameter annotated ``Magnitude`` (the
+    units module's alias for "the caller's unit") is a declared exception."""
     violations = []
     for rel, tree in _modules():
         for node in ast.walk(tree):

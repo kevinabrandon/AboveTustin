@@ -8,10 +8,13 @@ versions of the templates or the tracker without loss.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from dataclasses import asdict
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from abovetustin.aircraft import Aircraft
 from abovetustin.post import Post
 from abovetustin.tracker import Sighting
 
@@ -30,6 +33,27 @@ def record(sighting: Sighting, image_name: str | None = None) -> dict[str, Any]:
         "image": image_name,
         "closest": closest,
     }
+
+
+def from_record(record: dict[str, Any]) -> Sighting:
+    """Inverse of :func:`record`."""
+    closest = dict(record["closest"])
+    closest["observed_at"] = datetime.fromisoformat(closest["observed_at"])
+    return Sighting(
+        closest=Aircraft(**closest),
+        first_seen_at=datetime.fromisoformat(record["first_seen_at"]),
+        last_seen_at=datetime.fromisoformat(record["last_seen_at"]),
+        samples=int(record["samples"]),
+    )
+
+
+def read(path: Path) -> Iterator[tuple[Sighting, str | None]]:
+    """Every sighting in a log file, oldest first, with its image name."""
+    with path.open() as f:
+        for line in f:
+            if line.strip():
+                rec = json.loads(line)
+                yield from_record(rec), rec.get("image")
 
 
 class JsonlLog:

@@ -109,6 +109,19 @@ class TestImages:
     def test_record_round_trips_through_json(self):
         assert json.loads(json.dumps(jsonl.record(SIGHTING))) == jsonl.record(SIGHTING)
 
+    def test_from_record_rebuilds_the_sighting(self):
+        assert jsonl.from_record(json.loads(json.dumps(jsonl.record(SIGHTING)))) == SIGHTING
+
+    def test_read_yields_sightings_with_image_names(self, tmp_path):
+        path = tmp_path / "s.jsonl"
+        log = jsonl.JsonlLog(path)
+        log.post(Post(SIGHTING, b"png"))
+        log.post(Post(replace(SIGHTING, samples=1)))
+        path.write_text(path.read_text() + "\n")  # a blank line is tolerated
+        out = list(jsonl.read(path))
+        assert out[0] == (SIGHTING, "20260101T200231Z_a1b2c3.png")
+        assert out[1] == (replace(SIGHTING, samples=1), None)
+
 
 def test_summary_defaults_to_local_time():
     # Just that it runs and ends in a clock time; the zone depends on the machine.

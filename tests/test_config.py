@@ -1,4 +1,6 @@
+from datetime import time
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -37,6 +39,85 @@ def test_example_file_parses():
     assert cfg.render.ring_distances_m == pytest.approx((1609.344, 3218.688, 8046.72))
     assert cfg.render.reload_after_s == 3600.0
     assert cfg.image_dir == Path("~/.local/share/abovetustin/images").expanduser()
+    assert cfg.post.template == config.DEFAULT_TEMPLATE
+    assert cfg.post.hashtags == ("#ADSB", "#readsb")
+    assert cfg.post.tz is None
+    assert [r.tag for r in cfg.post.rules] == [
+        "#AfterHours",
+        "#2CloseForComfort",
+        "#ProbablyLanding",
+        "#UpInTheClouds",
+        "#WayTheHeckUpThere",
+        "#MovingQuickly",
+        "#FlyingFast",
+        None,
+    ]
+    landing = cfg.post.rules[2]
+    assert landing.altitude_min_m == pytest.approx(304.8)
+    assert landing.altitude_max_m == pytest.approx(762.0)
+    assert (landing.heading_min_deg, landing.heading_max_deg) == (157.5, 247.5)
+    assert cfg.post.rules[0].hours == (time(23, 0), time(7, 0))
+    assert cfg.post.rules[-1].anonymous is True and cfg.post.rules[-1].template
+    assert cfg.bluesky is None
+
+
+class TestPostSection:
+    def test_timezone_and_weekdays(self):
+        cfg = config.parse(
+            MINIMAL
+            + '[post]\ntimezone = "America/Los_Angeles"\n'
+            + '[[post.rules]]\ntag = "#Weekend"\nweekdays = ["Saturday", "sun"]\n'
+        )
+        assert cfg.post.tz == ZoneInfo("America/Los_Angeles")
+        assert cfg.post.rules[0].weekdays == frozenset({"sat", "sun"})
+
+    def test_bad_timezone(self):
+        with pytest.raises(config.ConfigError, match="unknown time zone 'Mars/Olympus'"):
+            config.parse(MINIMAL + '[post]\ntimezone = "Mars/Olympus"\n')
+
+    def test_bad_template_variable(self):
+        with pytest.raises(
+            config.ConfigError, match=r"\[post\] template: unknown template variable"
+        ):
+            config.parse(MINIMAL + '[post]\ntemplate = "${altitude}"\n')
+
+    def test_rule_needs_tag_or_template(self):
+        with pytest.raises(
+            config.ConfigError, match=r"\[post.rules\[0\]\] needs a tag or a template"
+        ):
+            config.parse(MINIMAL + '[[post.rules]]\naltitude_max = "1000 ft"\n')
+
+    def test_rule_unknown_key(self):
+        with pytest.raises(
+            config.ConfigError, match=r"post.rules\[0\]\] unknown key\(s\): altitude"
+        ):
+            config.parse(MINIMAL + '[[post.rules]]\ntag = "#x"\naltitude = "1000 ft"\n')
+
+    def test_rule_bad_hours_and_weekday(self):
+        with pytest.raises(config.ConfigError, match='hours must look like "23:00-07:00"'):
+            config.parse(MINIMAL + '[[post.rules]]\ntag = "#x"\nhours = "late"\n')
+        with pytest.raises(config.ConfigError, match="unknown day"):
+            config.parse(MINIMAL + '[[post.rules]]\ntag = "#x"\nweekdays = ["funday"]\n')
+
+    def test_rule_quantity_dimension(self):
+        with pytest.raises(config.ConfigError, match="speed_min: '300 ft'"):
+            config.parse(MINIMAL + '[[post.rules]]\ntag = "#x"\nspeed_min = "300 ft"\n')
+
+    def test_rules_must_be_an_array_of_tables(self):
+        with pytest.raises(config.ConfigError, match="array of tables"):
+            config.parse(MINIMAL + '[post]\nrules = "none"\n')
+
+
+class TestBlueskySection:
+    def test_present(self):
+        cfg = config.parse(MINIMAL + '[bluesky]\nhandle = "a.b.c"\napp_password = "p"\n')
+        assert cfg.bluesky is not None
+        assert (cfg.bluesky.handle, cfg.bluesky.app_password) == ("a.b.c", "p")
+        assert cfg.bluesky.service == "https://bsky.social"
+
+    def test_missing_password_names_the_key(self):
+        with pytest.raises(config.ConfigError, match=r"\[bluesky\] is missing app_password"):
+            config.parse(MINIMAL + '[bluesky]\nhandle = "a.b.c"\n')
 
 
 def test_render_can_be_disabled():
