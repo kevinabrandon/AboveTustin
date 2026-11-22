@@ -9,6 +9,7 @@ authors = [{ name = "Kevin Brandon" }]
 requires-python = ">=3.12"
 dependencies = [
     "pint>=0.26.2",
+    "playwright>=1.65.2",
 ]
 
 [project.scripts]
@@ -33,11 +34,6 @@ packages = ["src/abovetustin"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-# v1 modules still at the repo root. Each one is removed from this list in the
-# pull request that replaces it.
-extend-exclude = [
-    "screenshot.py",
-]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]

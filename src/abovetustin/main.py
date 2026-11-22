@@ -10,15 +10,20 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from abovetustin import config as config_module
+from abovetustin.post import Post
+from abovetustin.post.images import ImageDirectory
 from abovetustin.post.jsonl import JsonlLog
 from abovetustin.post.text import summary
+from abovetustin.render.tar1090 import RenderError, Tar1090Renderer
 from abovetustin.source import readsb
 from abovetustin.tracker import Sighting, Tracker
 
 log = logging.getLogger("abovetustin")
 
-#: Anything that accepts a completed sighting: the JSONL log, a social poster.
-Sink = Callable[[Sighting], None]
+#: Anything that accepts a completed post: the JSONL log, the image directory, a social poster.
+Sink = Callable[[Post], None]
+#: Produces the map image for a sighting, or None if it cannot.
+Render = Callable[[Sighting], bytes | None]
 
 
 def poll_loop(
@@ -27,12 +32,16 @@ def poll_loop(
     sinks: Sequence[Sink],
     interval_s: float,
     *,
+    render: Render | None = None,
+    when_idle: Callable[[], None] | None = None,
     sleep: Callable[[float], None] = time.sleep,
     max_polls: int | None = None,
 ) -> int:
-    """Poll ``fetch`` every ``interval_s``, feed the tracker, hand completed
-    sightings to every sink. Returns the number of sightings. A failing fetch
-    is logged and skipped; a failing sink is logged and the others still run.
+    """Poll ``fetch`` every ``interval_s``, feed the tracker, render an image
+    for each completed sighting and hand the post to every sink. Returns the
+    number of sightings. A failing fetch is logged and skipped; a failing sink
+    is logged and the others still run. ``when_idle`` runs on polls where
+    nothing is being tracked, for housekeeping that would disturb a track.
     """
     sightings = 0
     polls = 0
@@ -56,11 +65,14 @@ def poll_loop(
             for sighting in completed:
                 sightings += 1
                 log.info("sighting %s", summary(sighting))
+                post = Post(sighting, render(sighting) if render is not None else None)
                 for sink in sinks:
                     try:
-                        sink(sighting)
+                        sink(post)
                     except Exception:
                         log.exception("sink %r failed", sink)
+            if when_idle is not None and not tracker.in_progress():
+                when_idle()
         sleep(interval_s)
     return sightings
 
@@ -87,20 +99,40 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.exit(2, "error: no posting backends exist yet; run with --dry-run\n")
 
     tracker = Tracker(cfg.tracker)
-    sinks: list[Sink] = [JsonlLog(cfg.log_path).post]
+    sinks: list[Sink] = [JsonlLog(cfg.log_path).post, ImageDirectory(cfg.image_dir).post]
     log.info(
-        "dry run: polling %s every %s s, logging sightings to %s",
+        "dry run: polling %s every %s s, logging sightings to %s, images to %s",
         cfg.source.url,
         cfg.source.poll_interval_s,
         cfg.log_path,
+        cfg.image_dir if cfg.render else "nowhere (rendering disabled)",
     )
+
+    def fetch() -> readsb.Snapshot:
+        return readsb.fetch(cfg.source.url, cfg.receiver, cfg.source.timeout_s)
+
     try:
-        poll_loop(
-            lambda: readsb.fetch(cfg.source.url, cfg.receiver, cfg.source.timeout_s),
-            tracker,
-            sinks,
-            cfg.source.poll_interval_s,
-        )
+        if cfg.render is None:
+            poll_loop(fetch, tracker, sinks, cfg.source.poll_interval_s)
+        else:
+            with Tar1090Renderer(cfg.render, cfg.receiver) as renderer:
+                poll_loop(
+                    fetch,
+                    tracker,
+                    sinks,
+                    cfg.source.poll_interval_s,
+                    render=lambda s: _render_or_none(renderer, s),
+                    when_idle=renderer.reload_if_stale,
+                )
     except KeyboardInterrupt:
         log.info("stopped")
     return 0
+
+
+def _render_or_none(renderer: Tar1090Renderer, sighting: Sighting) -> bytes | None:
+    closest = sighting.closest
+    try:
+        return renderer.render(closest.hex, (closest.lat_deg, closest.lon_deg))
+    except RenderError as exc:
+        log.warning("no image for %s: %s", sighting.closest.ident, exc)
+        return None

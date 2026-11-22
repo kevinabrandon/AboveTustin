@@ -25,6 +25,13 @@ rule, unchanged since 2016:
   closest-approach sighting: callsign, distance, altitude, elevation, heading,
   speed, time, and a map image of the track.
 
+The map image comes from [tar1090](https://github.com/wiedehopf/tar1090) through a
+headless browser, so it looks like the map you already watch. It can be framed on a
+fixed point near the receiver (the default, so posts don't all point at one spot),
+on the receiver itself, on the aircraft at its closest approach, or fitted to the
+whole track, with an optional receiver marker and distance rings. See
+`config.example.toml`.
+
 A v1 post looked like this:
 
 ```
@@ -36,7 +43,7 @@ A v1 post looked like this:
 | | v1 (2016) | v2 |
 |---|---|---|
 | Receiver | dump1090-mutability on a Raspberry Pi 2 | [readsb](https://github.com/wiedehopf/readsb) + [tar1090](https://github.com/wiedehopf/tar1090) |
-| Map image | PhantomJS driving the dump1090 web map | Playwright screenshot of tar1090, or a self-rendered map |
+| Map image | PhantomJS driving the dump1090 web map | Playwright driving tar1090 in headless Chrome |
 | Posts to | Twitter (v1.1 API) | Bluesky first, then X |
 | Route lookup | FlightAware FlightXML3 | a free ADS-B database, later |
 | Config | `config.ini` next to the code, secrets inside | TOML, with the receiver position and credentials outside the repo |
@@ -51,7 +58,7 @@ A v1 post looked like this:
 - [x] Alarm-zone tracker
 - [x] Configuration, sighting log and a dry-run mode
 - [ ] Default alarm zone tuned against real traffic
-- [ ] Map image of the track
+- [x] Map image of the track
 - [ ] Bluesky posts
 - [ ] Runs as a service and survives a reboot
 - [ ] Route lookup: where it came from, where it is going

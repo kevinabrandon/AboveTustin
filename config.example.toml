@@ -30,3 +30,28 @@ max_position_age = "30 s"
 [log]
 # Every sighting is appended here as one JSON line, whether or not it is posted.
 path = "~/.local/share/abovetustin/sightings.jsonl"
+
+[render]
+# Map image of the track, screenshotted from tar1090 in a headless browser.
+enabled = true
+url = "http://localhost/tar1090/"
+zoom = 11
+width_px = 1280
+height_px = 720
+# How each image is framed:
+#   "grid"      the receiver position snapped to a grid of grid_deg, so that
+#               many posts do not all point at one spot (the default)
+#   "receiver"  the receiver itself
+#   "aircraft"  the aircraft at its closest approach
+#   "track"     the whole trail fitted to the frame, zoomed in no further than zoom
+center = "grid"
+grid_deg = 0.1
+# Draw the receiver marker and distance rings around it.
+show_receiver = false
+ring_distances = ["1 mi", "2 mi", "5 mi"]
+# Playwright browser channel: "chrome" or "msedge" for an installed browser,
+# "" for the chromium that `playwright install chromium` downloads.
+browser_channel = "chrome"
+# The page is reopened this often, while nothing is tracked, to bound its memory.
+reload_after = "1 h"
+image_dir = "~/.local/share/abovetustin/images"

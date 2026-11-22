@@ -5,7 +5,8 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from abovetustin.aircraft import Aircraft
-from abovetustin.post import jsonl, text
+from abovetustin.post import Post, jsonl, text
+from abovetustin.post.images import ImageDirectory
 from abovetustin.tracker import Sighting
 
 T0 = datetime(2026, 1, 1, 20, 2, 31, tzinfo=UTC)
@@ -80,12 +81,30 @@ class TestJsonl:
     def test_appends_one_line_per_sighting(self, tmp_path):
         path = tmp_path / "deep" / "sightings.jsonl"
         log = jsonl.JsonlLog(path)
-        log.post(SIGHTING)
-        log.post(replace(SIGHTING, samples=1))
+        log.post(Post(SIGHTING, b"png"))
+        log.post(Post(replace(SIGHTING, samples=1)))
         lines = path.read_text().splitlines()
         assert len(lines) == 2
         assert [json.loads(line)["samples"] for line in lines] == [22, 1]
+        assert [json.loads(line)["image"] for line in lines] == [
+            "20260101T200231Z_a1b2c3.png",
+            None,
+        ]
         assert "\n" not in lines[0]
+
+
+class TestImages:
+    def test_name_strips_the_anonymous_marker(self):
+        anon = replace(CLOSEST, hex="~f00001")
+        assert Post(replace(SIGHTING, closest=anon)).image_name == "20260101T200231Z_f00001.png"
+
+    def test_directory_writes_images_and_skips_posts_without(self, tmp_path):
+        sink = ImageDirectory(tmp_path / "images")
+        sink.post(Post(SIGHTING, b"\x89PNG"))
+        sink.post(Post(replace(SIGHTING, samples=1)))
+        files = sorted(p.name for p in (tmp_path / "images").iterdir())
+        assert files == ["20260101T200231Z_a1b2c3.png"]
+        assert (tmp_path / "images" / files[0]).read_bytes() == b"\x89PNG"
 
     def test_record_round_trips_through_json(self):
         assert json.loads(json.dumps(jsonl.record(SIGHTING))) == jsonl.record(SIGHTING)
