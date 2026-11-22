@@ -33,9 +33,7 @@ target-version = "py312"
 # v1 modules still at the repo root. Each one is removed from this list in the
 # pull request that replaces it.
 extend-exclude = [
-    "datasource.py",
     "fa_api.py",
-    "flightdata.py",
     "screenshot.py",
     "tracker.py",
 ]
