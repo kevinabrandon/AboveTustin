@@ -1,21 +1,23 @@
-# Added specificly for AboveTustin.  Have to hide the logs and keys folders
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+dist/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Local configuration and output. The real config, with the receiver position
+# and credentials, lives outside the repo; these are belt and braces.
+config.toml
+config.ini
 logs/
 keys/
-
-#ignore the file config.ini:
-config.ini
-
-#ignore tweet.png the image it saves on each tweet:
-tweet.png
-
-#ignore the ghostscript log:
 *.log
+*.png
+!docs/**/*.png
 
-#ignore my enviromental variables:
-py3/
-__pycache__/
-
-#ignore other things that happen to be there:
+# Editors and OS
 .DS_Store
-._.DS_Store
-
+.idea/
+.vscode/

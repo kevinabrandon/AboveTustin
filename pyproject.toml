@@ -1,0 +1,46 @@
+[project]
+name = "abovetustin"
+version = "2.0.0a0"
+description = "Posts a note and a map whenever an aircraft passes overhead, using a local ADS-B receiver."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Kevin Brandon" }]
+requires-python = ">=3.12"
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/kevinabrandon/AboveTustin"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.8",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/abovetustin"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+# v1 modules still at the repo root. Each one is removed from this list in the
+# pull request that replaces it.
+extend-exclude = [
+    "datasource.py",
+    "fa_api.py",
+    "flightdata.py",
+    "geomath.py",
+    "screenshot.py",
+    "tracker.py",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
