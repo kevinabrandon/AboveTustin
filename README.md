@@ -1,57 +1,87 @@
 # AboveTustin
 
-> **Status, November 2026:** AboveTustin is being rebuilt. The original Raspberry Pi
-> bot described below stopped working when the services it depended on
-> (dump1090-mutability, PhantomJS, the Twitter v1.1 API, FlightAware FlightXML3) were
-> retired. Its final code is preserved at tag
-> [`v1.0.0`](https://github.com/kevinabrandon/AboveTustin/tree/v1.0.0). The rebuild
-> is landing on `master` as a series of small pull requests, so `master` is a work in
-> progress until the new bot runs.
->
-> The idea stays the same: watch a local ADS-B receiver, notice when an aircraft passes
-> close overhead, and post a short note with a map of its track. Underneath, v2 reads
-> from [readsb](https://github.com/wiedehopf/readsb) and
-> [tar1090](https://github.com/wiedehopf/tar1090) instead of dump1090, posts to
-> Bluesky instead of Twitter, and is a proper Python 3.12 package with tests and CI
-> instead of a handful of scripts. Internally everything is in SI units, with
-> conversions to the feet and miles in the posts handled at the edges by pint. The
-> alarm-zone tracking logic from v1 carries over.
+AboveTustin watches a local ADS-B receiver and, whenever an aircraft passes close
+overhead, posts a short note and a map of its track.
 
-[AboveTustin](https://twitter.com/abovetustin) is an ADS-B Twitter Bot running on a Raspberry Pi 2.  It tracks airplanes and then tweets whenever an airplane flies overhead.
+It started in 2016 as a Raspberry Pi in a window in Tustin, California, tweeting
+as [@AboveTustin](https://twitter.com/abovetustin), and ran for several years and
+tens of thousands of posts before the services it depended on were retired one by
+one. The name stays; the project is being rebuilt from the ground up.
 
- * Uses [dump1090-mutability](https://github.com/mutability/dump1090) for ADSB message decoding, airplane tracking, and webserving.
- * It tweets an image of a map with the airplane's track.
- * It displays the flight name if available, or the reported icao code.
- * It displays altitude, ground speed and heading information of the airplane at it's closest point to the bot.
- * Gives different hashtags depending on altitude, speed and time of day.
+> **Status, November 2026: rebuild in progress.** v2 does not run end to end yet;
+> see the roadmap below. The last working v1 code is preserved at tag
+> [`v1.0.0`](https://github.com/kevinabrandon/AboveTustin/tree/v1.0.0).
 
-## Example Tweets
-![](http://i.imgur.com/fpzYXFTl.png)
-![](http://i.imgur.com/t1Wzd1tl.png)
-![](http://i.imgur.com/mjvbbPNl.png)
+## How it works
 
-## Hardware
-![Airplane Tracking Twitter Bot](http://i.imgur.com/zKuL5y1l.jpg)
- 
- * $35 RaspberryPi 2 over a year old
- * $15 RTL-SDR dongle (NooElec)
- * $6 Coax adapter
- * Coax cable found in my closet
- * Home made cantenna ([instructions here](https://web.archive.org/web/20170909005202/https://www.adsbexchange.com/forums/topic/beginners-2-cantenna-easy-diy-antenna-to-improve-rangeplane-count/))
- 
-## Future Plans
-* Hopefully very soon it will be included in jprochazka's wonderful [adsb-receiver](https://github.com/jprochazka/adsb-receiver) project, which will simplify the instalation process for those who would like to create their own twitter bots.
-* Add a calibrated sound meter to catch [noise ordinance](http://www.ocair.com/generalaviation/noise/) rule breakers.
-* Add PTZ IP camera to capture video of the airplanes and auto-upload to YouTube
- * Some even more future day use OpenCV to video detect and track airplanes.
+The receiver (readsb) decodes the position reports that aircraft broadcast and
+publishes them as JSON once a second. The bot polls that feed and applies one
+rule, unchanged since 2016:
 
-## Dependencies
-* v2 uses [pint](https://pint.readthedocs.io/) for unit handling; see `CONTRIBUTING.md` for the unit policy.
-* Uses [dump1090-mutability](https://github.com/mutability/dump1090) for ADSB message decoding, airplane tracking, and webserving.
-* Uses [twitter](https://pypi.python.org/pypi/twitter) for tweeting.
-* Uses [selenium](https://pypi.python.org/pypi/selenium) with [PhantomJS](http://phantomjs.org/) for capturing screenshots.
-  * Use jprochazka's [build of PhantomJS](https://github.com/jprochazka/phantomjs-linux-armv7l)
+* An aircraft is **in the alarm zone** when it is closer than a configured
+  distance *or* higher above the horizon than a configured elevation angle.
+* While it is in the zone, remember its state at the **closest approach**.
+* Once it has been out of the zone for a few consecutive polls, **post** the
+  closest-approach sighting: callsign, distance, altitude, elevation, heading,
+  speed, time, and a map image of the track.
 
-## Contributors
-* [Kevin Brandon](https://github.com/kevinabrandon)
-* [Joseph Prochazka](https://github.com/jprochazka)
+A v1 post looked like this:
+
+```
+#SKW4530 : 0.2 mi away @ 1600 ft and 59.7° frm hrzn, heading SW @ 132.3mi/h 20:02:31. #ProbablyLanding #AboveTustin #RaspberryPi #ADSB #dump1090
+```
+
+## What v2 changes
+
+| | v1 (2016) | v2 |
+|---|---|---|
+| Receiver | dump1090-mutability on a Raspberry Pi 2 | [readsb](https://github.com/wiedehopf/readsb) + [tar1090](https://github.com/wiedehopf/tar1090) |
+| Map image | PhantomJS driving the dump1090 web map | Playwright screenshot of tar1090, or a self-rendered map |
+| Posts to | Twitter (v1.1 API) | Bluesky first, then X |
+| Route lookup | FlightAware FlightXML3 | a free ADS-B database, later |
+| Config | `config.ini` next to the code, secrets inside | TOML, with the receiver position and credentials outside the repo |
+| Units | miles and feet throughout | SI internally, converted at the edges by [pint](https://pint.readthedocs.io/) |
+| Code | a handful of Python 3.4 scripts | a Python 3.12 package with tests and CI |
+
+## Roadmap
+
+- [x] Project skeleton: Python 3.12 package, tests, CI
+- [x] Geometry in SI units, with the unit convention enforced by tests
+- [x] Aircraft model and readsb parser, with recorded fixtures
+- [x] Alarm-zone tracker
+- [ ] Configuration, sighting log and a dry-run mode
+- [ ] Default alarm zone tuned against real traffic
+- [ ] Map image of the track
+- [ ] Bluesky posts
+- [ ] Runs as a service and survives a reboot
+- [ ] Route lookup: where it came from, where it is going
+- [ ] X posts
+
+## Running it
+
+Not yet. When v2 runs end to end this section will cover installing readsb and
+tar1090 (wiedehopf's install scripts work on a Pi or any Linux box), writing the
+config, a dry-run mode that logs sightings without posting, and a systemd unit.
+
+## Development
+
+```sh
+uv sync
+uv run pytest
+uv run ruff check . && uv run ruff format --check .
+```
+
+Pull requests are welcome; see `CONTRIBUTING.md` for the workflow and the unit
+convention.
+
+## Credits
+
+Written by [Kevin Brandon](https://github.com/kevinabrandon), with contributions
+to v1 from [John Wiseman](https://github.com/wiseman) (Virtual Radar Server
+support, aircraft identification), [Joseph Prochazka](https://github.com/jprochazka)
+(the [adsb-receiver](https://github.com/jprochazka/adsb-receiver) integration),
+[Sergiusz Paprzycki](https://github.com/spaprzycki) (FlightAware route lookup) and
+[Scott Schulz](https://github.com/Jestre) (screenshot cropping). The original `flightdata.py` grew out of
+[martinohanlon/flightdata](https://github.com/martinohanlon/flightdata).
+
+MIT licensed.
