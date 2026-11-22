@@ -25,6 +25,13 @@ rule, unchanged since 2016:
   closest-approach sighting: callsign, distance, altitude, elevation, heading,
   speed, time, and a map image of the track.
 
+The map image comes from [tar1090](https://github.com/wiedehopf/tar1090) through a
+headless browser, so it looks like the map you already watch. It can be framed on a
+fixed point near the receiver (the default, so posts don't all point at one spot),
+on the receiver itself, on the aircraft at its closest approach, or fitted to the
+whole track, with an optional receiver marker and distance rings. See
+`config.example.toml`.
+
 A v1 post looked like this:
 
 ```

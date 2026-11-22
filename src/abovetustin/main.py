@@ -130,8 +130,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 def _render_or_none(renderer: Tar1090Renderer, sighting: Sighting) -> bytes | None:
+    closest = sighting.closest
     try:
-        return renderer.render(sighting.closest.hex)
+        return renderer.render(closest.hex, (closest.lat_deg, closest.lon_deg))
     except RenderError as exc:
         log.warning("no image for %s: %s", sighting.closest.ident, exc)
         return None

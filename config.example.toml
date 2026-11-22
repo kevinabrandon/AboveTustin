@@ -38,10 +38,12 @@ url = "http://localhost/tar1090/"
 zoom = 11
 width_px = 1280
 height_px = 720
-# Where the map is centred. "grid" snaps the receiver position to a grid of
-# grid_deg so that many posts do not point at one spot; "receiver" centres on
-# the receiver itself. Use "receiver" and show_receiver when the receiver is
-# not somewhere you mind people knowing about.
+# How each image is framed:
+#   "grid"      the receiver position snapped to a grid of grid_deg, so that
+#               many posts do not all point at one spot (the default)
+#   "receiver"  the receiver itself
+#   "aircraft"  the aircraft at its closest approach
+#   "track"     the whole trail fitted to the frame, zoomed in no further than zoom
 center = "grid"
 grid_deg = 0.1
 # Draw the receiver marker and distance rings around it.

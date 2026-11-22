@@ -57,7 +57,9 @@ def test_render_centred_on_the_receiver_with_rings():
 
 
 def test_render_bad_centre_and_rings():
-    with pytest.raises(config.ConfigError, match="center must be one of grid, receiver"):
+    with pytest.raises(
+        config.ConfigError, match="center must be one of grid, receiver, aircraft, track"
+    ):
         config.parse(MINIMAL + '[render]\ncenter = "house"\n')
     with pytest.raises(config.ConfigError, match="ring_distances must be a list"):
         config.parse(MINIMAL + '[render]\nring_distances = "1 mi"\n')

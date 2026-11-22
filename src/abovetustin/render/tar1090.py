@@ -7,16 +7,21 @@ sightings because that is where the trail history lives: readsb's JSON only
 carries current positions, and tar1090 accumulates the track in the page as
 the aircraft is watched.
 
-Privacy, by default: the page is opened with the receiver's range rings
-and range outline switched off, the layer with the receiver marker is
-hidden, and the info panel (which prints the aircraft's distance from the
-receiver) is suppressed. The map is centred not on the aircraft or the
-receiver but on the receiver position snapped to a coarse grid, so the
-centres of many posts cluster on a grid point rather than on a house.
+The page is opened with the receiver's range rings and range outline
+switched off, the layer with the receiver marker is hidden, and the info
+panel (which prints the aircraft's distance from the receiver) is
+suppressed; ``show_receiver = true`` puts the marker and rings back, at
+``ring_distances``.
 
-Not every receiver is a home. ``center = "receiver"`` centres the map on
-the receiver, and ``show_receiver = true`` draws tar1090's receiver marker
-with range rings at ``ring_distances`` around it.
+``center`` chooses the framing of each image:
+
+* ``grid``: the receiver position snapped to a ``grid_deg`` grid. The
+  default, because the centres of many posts then cluster on a grid point
+  rather than on the receiver.
+* ``receiver``: the receiver itself.
+* ``aircraft``: the aircraft at its closest approach.
+* ``track``: the whole trail, fitted to the frame, zoomed in no further
+  than ``zoom``.
 """
 
 from __future__ import annotations
@@ -51,12 +56,33 @@ _DRAW_RINGS_JS = """(miles) => {
     drawSiteCircle();
 }"""
 _HIDE_PANELS_CSS = "#selected_infoblock, #sidebar_container { display: none !important; }"
-_SELECT_JS = """([hex, lat, lon, zoom]) => {
+_SELECT_JS = """(hex) => {
     if (!g.planes[hex]) return false;
     selectPlaneByHex(hex, {noDeselect: true});
+    return true;
+}"""
+_CENTER_JS = """([lat, lon, zoom]) => {
     OLMap.getView().setCenter(ol.proj.fromLonLat([lon, lat]));
     OLMap.getView().setZoom(zoom);
-    return true;
+}"""
+# Fit the view to the selected aircraft's trail; fall back to centring on
+# the aircraft when there is no trail to fit.
+_FIT_TRACK_JS = """([hex, lat, lon, zoom, pad]) => {
+    const segs = (g.planes[hex].track_linesegs || []).filter(s => s.fixed);
+    if (segs.length === 0) {
+        OLMap.getView().setCenter(ol.proj.fromLonLat([lon, lat]));
+        OLMap.getView().setZoom(zoom);
+        return 0;
+    }
+    const here = ol.proj.fromLonLat([lon, lat]);
+    let extent = [here[0], here[1], here[0], here[1]];
+    segs.forEach(s => {
+        const e = s.fixed.getExtent();
+        extent = [Math.min(extent[0], e[0]), Math.min(extent[1], e[1]),
+                  Math.max(extent[2], e[2]), Math.max(extent[3], e[3])];
+    });
+    OLMap.getView().fit(extent, {padding: [pad, pad, pad, pad], maxZoom: zoom});
+    return segs.length;
 }"""
 _DESELECT_JS = "() => deselectAllPlanes()"
 
@@ -65,7 +91,9 @@ class RenderError(Exception):
     pass
 
 
-CENTER_MODES = ("grid", "receiver")
+CENTER_MODES = ("grid", "receiver", "aircraft", "track")
+#: Pixels between the fitted track and the frame edge in "track" mode.
+TRACK_PADDING_PX = 60
 DEFAULT_RING_DISTANCES_M = tuple(units.parse(f"{n} mi", "m") for n in (1, 2, 5))
 
 
@@ -76,7 +104,7 @@ class RenderConfig:
     zoom: int = 11
     width_px: int = 1280
     height_px: int = 720
-    #: "grid": the receiver position snapped to grid_deg; "receiver": the receiver itself.
+    #: One of CENTER_MODES; see the module docstring.
     center: str = "grid"
     grid_deg: float = 0.1
     #: Draw tar1090's receiver marker and range rings.
@@ -97,9 +125,12 @@ def snap(position: LatLonDeg, grid_deg: float) -> LatLonDeg:
 
 
 def map_center(config: RenderConfig, receiver: LatLonDeg) -> LatLonDeg:
+    """Where the page is centred when it opens, and the fixed centre for the
+    ``grid`` and ``receiver`` modes. The aircraft-relative modes reframe per
+    image and start from the grid point."""
     if config.center == "receiver":
         return receiver
-    if config.center == "grid":
+    if config.center in CENTER_MODES:
         return snap(receiver, config.grid_deg)
     raise ValueError(f"center must be one of {CENTER_MODES}, not {config.center!r}")
 
@@ -188,16 +219,16 @@ class Tar1090Renderer:
                 self._browser.close()
             self._open()
 
-    def render(self, hex_code: str) -> bytes:
-        """PNG of the map with ``hex_code`` selected and its trail shown."""
+    def render(self, hex_code: str, position: LatLonDeg) -> bytes:
+        """PNG of the map with ``hex_code`` selected and its trail shown,
+        framed per ``config.center``. ``position`` is the aircraft's
+        closest-approach position."""
         if self._page is None:
             raise RenderError("renderer is not open")
         try:
-            found = self._page.evaluate(
-                _SELECT_JS, [hex_code, self.center[0], self.center[1], self.config.zoom]
-            )
-            if not found:
+            if not self._page.evaluate(_SELECT_JS, hex_code):
                 raise RenderError(f"{hex_code} is not on the map")
+            self._frame(hex_code, position)
             self._page.wait_for_timeout(1500)
             png = self._page.screenshot(type="png")
             self._page.evaluate(_DESELECT_JS)
@@ -206,3 +237,15 @@ class Tar1090Renderer:
         except Exception as exc:  # Playwright errors: browser gone, page crashed
             raise RenderError(f"browser failure: {exc}") from exc
         return png
+
+    def _frame(self, hex_code: str, position: LatLonDeg) -> None:
+        assert self._page is not None
+        zoom = self.config.zoom
+        if self.config.center == "track":
+            self._page.evaluate(
+                _FIT_TRACK_JS, [hex_code, position[0], position[1], zoom, TRACK_PADDING_PX]
+            )
+        elif self.config.center == "aircraft":
+            self._page.evaluate(_CENTER_JS, [position[0], position[1], zoom])
+        else:
+            self._page.evaluate(_CENTER_JS, [self.center[0], self.center[1], zoom])
