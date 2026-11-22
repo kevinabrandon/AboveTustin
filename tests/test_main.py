@@ -5,6 +5,7 @@ import pytest
 
 from abovetustin import main
 from abovetustin.aircraft import Aircraft
+from abovetustin.post import Post
 from abovetustin.source.readsb import Snapshot
 from abovetustin.tracker import Tracker, TrackerConfig
 
@@ -69,9 +70,44 @@ def test_one_pass_reaches_every_sink():
         max_polls=5,
     )
     assert count == 1
-    assert [s.closest.distance_m for s in seen_a] == [300.0]
+    assert [p.sighting.closest.distance_m for p in seen_a] == [300.0]
     assert seen_b == seen_a
+    assert all(isinstance(p, Post) and p.image_png is None for p in seen_a)
     assert sleeps == [0.5] * 5
+
+
+def test_render_result_travels_with_the_post():
+    source = FakeSource(snapshots(800.0, None, None))
+    seen = []
+    main.poll_loop(
+        source,
+        Tracker(CONFIG),
+        [seen.append],
+        0,
+        render=lambda s: b"PNG" + s.closest.hex.encode(),
+        sleep=lambda s: None,
+        max_polls=3,
+    )
+    assert seen[0].image_png == b"PNGa1b2c3"
+    assert seen[0].image_name == "20260101T000000Z_a1b2c3.png"
+
+
+def test_when_idle_runs_only_with_nothing_tracked():
+    source = FakeSource(snapshots(None, 800.0, 800.0, None, None, None))
+    idle_polls = []
+    tracker = Tracker(CONFIG)
+    main.poll_loop(
+        source,
+        tracker,
+        [],
+        0,
+        when_idle=lambda: idle_polls.append(source.calls),
+        sleep=lambda s: None,
+        max_polls=6,
+    )
+    # Poll 1 is empty; polls 2-3 track; polls 4-5 are misses still tracked; the
+    # sighting completes on poll 5, so poll 5 and 6 are idle again.
+    assert idle_polls == [1, 5, 6]
 
 
 def test_repeated_snapshot_is_not_a_new_poll():
