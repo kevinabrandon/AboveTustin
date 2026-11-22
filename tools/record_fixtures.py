@@ -5,7 +5,7 @@ Nothing is written as received. Each snapshot is scrubbed first so that the
 fixture reveals neither where the receiver is nor which real flights it saw:
 
 * Positions are translated by a constant offset so the receiver sits at the
-  original v1 location in Tustin, CA. The geometry (distances, bearings,
+  coordinates of Tustin, CA. The geometry (distances, bearings,
   elevations) is preserved to within the small distortion of a translation.
   Receiver-relative and other positional fields are dropped.
 * Addresses and callsigns are replaced by deterministic synthetic ones and
@@ -38,8 +38,8 @@ from pathlib import Path
 from typing import Any
 from urllib.request import urlopen
 
-TUSTIN_LAT_DEG = 33.754271
-TUSTIN_LON_DEG = -117.823096
+TUSTIN_LAT_DEG = 33.7458
+TUSTIN_LON_DEG = -117.8261
 RECORDING_START_EPOCH_S = 1_767_225_600  # 2026-01-01T00:00:00Z
 
 DROP_KEYS = {"r", "r_dst", "r_dir", "rr_lat", "rr_lon", "lastPosition"}
@@ -54,6 +54,8 @@ class Scrubber:
         self.time_offset_s: float | None = None
 
     def snapshot(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Scrub one document. Call only for snapshots that will be written, so
+        the rebased clock starts at the first one kept."""
         if self.time_offset_s is None:
             self.time_offset_s = RECORDING_START_EPOCH_S - float(data["now"])
         return {
@@ -118,8 +120,9 @@ def main(argv: list[str] | None = None) -> int:
             data = _get_json(f"{args.base_url}/aircraft.json")
             if data["now"] != last_now:
                 last_now = data["now"]
-                snapshot = scrubber.snapshot(data)
-                if len(snapshot["aircraft"]) >= args.min_aircraft:
+                positioned = sum(1 for a in data.get("aircraft", []) if "lat" in a)
+                if positioned >= args.min_aircraft:
+                    snapshot = scrubber.snapshot(data)
                     f.write(json.dumps(snapshot, separators=(",", ":")) + "\n")
                     f.flush()
                     written += 1
