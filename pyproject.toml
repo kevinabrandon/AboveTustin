@@ -8,6 +8,7 @@ license-files = ["LICENSE"]
 authors = [{ name = "Kevin Brandon" }]
 requires-python = ">=3.12"
 dependencies = [
+    "atproto>=0.0.75",
     "pint>=0.26.2",
     "playwright>=1.65.2",
 ]
