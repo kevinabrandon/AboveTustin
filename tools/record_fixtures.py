@@ -24,6 +24,8 @@ Usage::
 
 Snapshots with fewer than ``--min-aircraft`` positioned aircraft are skipped
 without counting, so the tool can be left running through quiet skies.
+Output goes to ``NAME.jsonl.partial`` and is renamed when the recording is
+complete, so a half-written file is never mistaken for a fixture.
 """
 
 from __future__ import annotations
@@ -110,7 +112,8 @@ def main(argv: list[str] | None = None) -> int:
     deadline = time.monotonic() + args.max_wait_s
     last_now = None
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    with args.out.open("w") as f:
+    partial = args.out.with_suffix(args.out.suffix + ".partial")
+    with partial.open("w") as f:
         while written < args.count and time.monotonic() < deadline:
             data = _get_json(f"{args.base_url}/aircraft.json")
             if data["now"] != last_now:
@@ -127,8 +130,13 @@ def main(argv: list[str] | None = None) -> int:
                     )
             time.sleep(args.interval_s)
     print(file=sys.stderr)
-    print(f"wrote {written} snapshots to {args.out}", file=sys.stderr)
-    return 0 if written else 1
+    if written:
+        partial.rename(args.out)
+        print(f"wrote {written} snapshots to {args.out}", file=sys.stderr)
+        return 0
+    partial.unlink()
+    print("no traffic seen, nothing written", file=sys.stderr)
+    return 1
 
 
 if __name__ == "__main__":

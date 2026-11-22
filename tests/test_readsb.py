@@ -10,7 +10,10 @@ from abovetustin.source import readsb
 # The v1 receiver position, which every fixture is translated onto.
 RECEIVER = (33.754271, -117.823096)
 
-FIXTURES = sorted((Path(__file__).parent / "fixtures" / "readsb").glob("*.jsonl"))
+# Empty files are a recorder still at work, not fixtures.
+FIXTURES = sorted(
+    p for p in (Path(__file__).parent / "fixtures" / "readsb").glob("*.jsonl") if p.stat().st_size
+)
 
 
 def sample_document():
