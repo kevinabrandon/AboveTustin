@@ -23,11 +23,19 @@ Rules, enforced by ``tests/test_conventions.py``:
 The one exception: angles are degrees (``_deg``), not radians. Every
 producer and consumer of a bearing or elevation speaks degrees and there
 is a single ``atan2`` between them.
+
+A helper that is generic over units, such as a range check applied to
+altitudes in one place and speeds in another, annotates those parameters
+as :data:`Magnitude` instead of ``float``. The alias says "the caller's
+unit" out loud and is easy to grep for; it is not for ordinary values.
 """
 
 from __future__ import annotations
 
 import pint
+
+#: A float whose unit is the caller's concern. See the module docstring.
+type Magnitude = float
 
 ureg = pint.UnitRegistry()
 Quantity = ureg.Quantity
