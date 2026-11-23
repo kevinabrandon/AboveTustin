@@ -90,6 +90,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     show.add_argument("--config", type=Path, default=config_module.DEFAULT_PATH)
     show.add_argument("--last", type=int, default=10, metavar="N", help="how many, newest last")
     show.add_argument("-v", "--verbose", action="store_true")
+    check = commands.add_parser(
+        "check", help="verify the config, the receiver and the Bluesky login, then exit"
+    )
+    check.add_argument("--config", type=Path, default=config_module.DEFAULT_PATH)
+    check.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args(argv)
 
     logging.basicConfig(
@@ -97,6 +102,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         format="%(asctime)s %(levelname)s %(message)s",
         stream=sys.stderr,
     )
+    # The atproto SDK's HTTP client logs every request at INFO.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     try:
         cfg = config_module.load(args.config)
     except config_module.ConfigError as exc:
@@ -104,6 +111,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "compose":
         return _compose(cfg, args.last)
+    if args.command == "check":
+        return _check(cfg)
 
     sinks: list[Sink] = [JsonlLog(cfg.log_path).post, ImageDirectory(cfg.image_dir).post]
     if args.dry_run:
@@ -147,6 +156,33 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )
     except KeyboardInterrupt:
         log.info("stopped")
+    return 0
+
+
+def _check(cfg: config_module.Config) -> int:
+    """Fail fast on anything the service would fail on: an unreachable receiver
+    or a bad Bluesky login. Exit status 0 means run will start cleanly."""
+    try:
+        snapshot = readsb.fetch(cfg.source.url, cfg.receiver, cfg.source.timeout_s)
+    except Exception as exc:
+        log.error("receiver: cannot read %s: %s", cfg.source.url, exc)
+        return 1
+    log.info("receiver: %d aircraft with positions at %s", len(snapshot.aircraft), cfg.source.url)
+    if cfg.bluesky is None:
+        log.info("bluesky: not configured; run would need --dry-run")
+    else:
+        try:
+            BlueskyPoster(cfg.bluesky, cfg.post).login()
+        except Exception as exc:
+            log.error("bluesky: login as %s failed: %s", cfg.bluesky.handle, exc)
+            return 1
+    log.info(
+        "config ok: alarm zone %.1f km / %.0f°, %d post rules, rendering %s",
+        cfg.tracker.distance_alarm_m / 1000,
+        cfg.tracker.elevation_alarm_deg,
+        len(cfg.post.rules),
+        "on" if cfg.render else "off",
+    )
     return 0
 
 

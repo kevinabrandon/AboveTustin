@@ -210,6 +210,44 @@ class TestCli:
             "TEST001 0.5 mi #ADSB\n    [20 chars, image: 20260101T000000Z_a1b2c3.png]"
         )
 
+    def test_check_reports_receiver_and_login(self, tmp_path, caplog, monkeypatch):
+        cfg = tmp_path / "c.toml"
+        cfg.write_text(self.MINIMAL + '[bluesky]\nhandle = "a.b"\napp_password = "p"\n')
+        snap = snapshots(800.0)[0]
+        monkeypatch.setattr(main.readsb, "fetch", lambda url, receiver, timeout_s: snap)
+        monkeypatch.setattr(main.BlueskyPoster, "login", lambda self: "did:plc:x")
+        with caplog.at_level(logging.INFO, logger="abovetustin"):
+            assert main.main(["check", "--config", str(cfg)]) == 0
+        assert "receiver: 1 aircraft with positions" in caplog.text
+        assert "config ok" in caplog.text
+
+    def test_check_fails_on_unreachable_receiver(self, tmp_path, caplog, monkeypatch):
+        cfg = tmp_path / "c.toml"
+        cfg.write_text(self.MINIMAL)
+
+        def down(url, receiver, timeout_s):
+            raise ConnectionError("refused")
+
+        monkeypatch.setattr(main.readsb, "fetch", down)
+        with caplog.at_level(logging.ERROR, logger="abovetustin"):
+            assert main.main(["check", "--config", str(cfg)]) == 1
+        assert "cannot read" in caplog.text and "refused" in caplog.text
+
+    def test_check_fails_on_bad_login(self, tmp_path, caplog, monkeypatch):
+        cfg = tmp_path / "c.toml"
+        cfg.write_text(self.MINIMAL + '[bluesky]\nhandle = "a.b"\napp_password = "nope"\n')
+        monkeypatch.setattr(
+            main.readsb, "fetch", lambda url, receiver, timeout_s: snapshots(None)[0]
+        )
+
+        def refuse(self):
+            raise RuntimeError("401")
+
+        monkeypatch.setattr(main.BlueskyPoster, "login", refuse)
+        with caplog.at_level(logging.ERROR, logger="abovetustin"):
+            assert main.main(["check", "--config", str(cfg)]) == 1
+        assert "login as a.b failed: 401" in caplog.text and "nope" not in caplog.text
+
     def test_compose_without_a_log(self, tmp_path, capsys):
         cfg = tmp_path / "c.toml"
         cfg.write_text(self.MINIMAL + f'[log]\npath = "{tmp_path / "none.jsonl"}"\n')
