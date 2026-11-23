@@ -36,6 +36,48 @@ class TestPageUrl:
         for flag in ("hideSidebar", "hideButtons", "noVanish"):
             assert flag in url
 
+    def test_defaults_are_flags_and_values(self):
+        url = tar1090.page_url(CONFIG, (33.7, -117.8))
+        assert "&hideSidebar&hideButtons&noVanish" in url
+        assert "mapDim=0" in url and "toggles" not in url
+
+    def test_url_params_pass_through_and_override(self):
+        config = tar1090.RenderConfig(
+            url=CONFIG.url,
+            url_params={
+                "enableLabels": True,
+                "extendedLabels": 2,
+                "baseMap": "esri",
+                "overlays": "noaa_radar,tfrs",
+                "mapDim": 0.45,
+                "noVanish": False,
+            },
+        )
+        url = tar1090.page_url(config, (33.7, -117.8))
+        assert "&enableLabels" in url and "extendedLabels=2" in url
+        assert "baseMap=esri" in url
+        assert "overlays=noaa_radar%2Ctfrs" in url
+        assert "mapDim=0.45" in url and "mapDim=0&" not in url
+        assert "noVanish" not in url
+
+    def test_info_panel_picks_the_photo_source_that_serves_bots(self):
+        config = tar1090.RenderConfig(url=CONFIG.url, info_panel=True)
+        url = tar1090.page_url(config, (33.7, -117.8))
+        assert "toggles=planespottersAPI%2C0%2CplanespottingAPI%2C1" in url
+        # and a user toggle still overrides
+        config = tar1090.RenderConfig(
+            url=CONFIG.url, info_panel=True, toggles={"planespottersAPI": True}
+        )
+        assert "planespottersAPI%2C1" in tar1090.page_url(config, (33.7, -117.8))
+
+    def test_toggles(self):
+        config = tar1090.RenderConfig(
+            url=CONFIG.url, toggles={"MapDim": True, "useRouteAPI": True, "darkMode": False}
+        )
+        assert "toggles=MapDim%2C1%2CuseRouteAPI%2C1%2CdarkMode%2C0" in tar1090.page_url(
+            config, (33.7, -117.8)
+        )
+
     def test_receiver_layers_named(self):
         assert "Site position" in tar1090.RECEIVER_LAYERS
         assert "Range rings" in tar1090.RECEIVER_LAYERS

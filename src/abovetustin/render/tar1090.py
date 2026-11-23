@@ -11,7 +11,11 @@ The page is opened with the receiver's range rings and range outline
 switched off, the layer with the receiver marker is hidden, and the info
 panel (which prints the aircraft's distance from the receiver) is
 suppressed; ``show_receiver = true`` puts the marker and rings back, at
-``ring_distances``.
+``ring_distances``, and ``info_panel = true`` lets tar1090 show its
+selected-aircraft panel. Of tar1090's two photo sources, planespotters.net
+refuses automated clients (and the renderer does not pretend to be
+anything else), so it is switched off; planespotting.be serves them, so
+it is switched on and supplies the photo when it has one.
 
 ``center`` chooses the framing of each image:
 
@@ -22,13 +26,24 @@ suppressed; ``show_receiver = true`` puts the marker and rings back, at
 * ``aircraft``: the aircraft at its closest approach.
 * ``track``: the whole trail, fitted to the frame, zoomed in no further
   than ``zoom``.
+
+``labels_selected_only`` uses tar1090's multi-select mode, in which only
+selected aircraft carry a label, so with labels enabled the sighted
+aircraft is labelled and the rest are not.
+
+Everything tar1090 can do from its URL is passed through: ``url_params``
+are added to the page URL (``enableLabels``, ``baseMap``, ``overlays``,
+``mapDim`` and so on; ``true`` means a bare flag) and override the
+renderer's own defaults, and ``toggles`` set the switches from tar1090's
+settings menu (``MapDim``, ``useRouteAPI``, ``darkMode``, ...).
 """
 
 from __future__ import annotations
 
 import logging
 import time
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from urllib.parse import urlencode
 
 from abovetustin import units
@@ -55,7 +70,8 @@ _DRAW_RINGS_JS = """(miles) => {
     SiteCirclesLineDash = [6, 6];
     drawSiteCircle();
 }"""
-_HIDE_PANELS_CSS = "#selected_infoblock, #sidebar_container { display: none !important; }"
+_HIDE_SIDEBAR_CSS = "#sidebar_container { display: none !important; }"
+_HIDE_INFOBLOCK_CSS = "#selected_infoblock { display: none !important; }"
 _SELECT_JS = """(hex) => {
     if (!g.planes[hex]) return false;
     selectPlaneByHex(hex, {noDeselect: true});
@@ -85,6 +101,7 @@ _FIT_TRACK_JS = """([hex, lat, lon, zoom, pad]) => {
     return segs.length;
 }"""
 _DESELECT_JS = "() => deselectAllPlanes()"
+_SELECTED_LABELS_ONLY_JS = "() => toggleMultiSelect('on')"
 
 
 class RenderError(Exception):
@@ -109,11 +126,20 @@ class RenderConfig:
     grid_deg: float = 0.1
     #: Draw tar1090's receiver marker and range rings.
     show_receiver: bool = False
+    #: Leave tar1090's selected-aircraft panel (photo, registration, distance
+    #: from the receiver, ...) visible in the image.
+    info_panel: bool = False
+    #: With labels enabled (enableLabels in url_params), label only the sighted aircraft.
+    labels_selected_only: bool = False
     ring_distances_m: tuple[float, ...] = DEFAULT_RING_DISTANCES_M
     #: Playwright browser channel: "chrome", "msedge", or "" for its own chromium.
     browser_channel: str = "chrome"
     #: Reload the page this often, when nothing is being tracked, to keep its memory in check.
     reload_after_s: float = 3600.0
+    #: Extra tar1090 URL parameters; True is a bare flag, False or None drops the parameter.
+    url_params: Mapping[str, str | int | float | bool | None] = field(default_factory=dict)
+    #: tar1090 settings-menu toggles, applied via its ``toggles=`` parameter.
+    toggles: Mapping[str, bool] = field(default_factory=dict)
 
 
 def snap(position: LatLonDeg, grid_deg: float) -> LatLonDeg:
@@ -142,17 +168,38 @@ def ring_distances_mi(config: RenderConfig) -> list[float]:
 
 def page_url(config: RenderConfig, center: LatLonDeg) -> str:
     """The tar1090 URL the renderer opens: centred and quiet. The receiver's
-    rings and outline are off here and turned back on after load when asked."""
-    params = {
+    rings and outline are off here and turned back on after load when asked.
+    ``config.url_params`` are applied last and win over these defaults."""
+    params: dict[str, str | int | float | bool | None] = {
         "lat": f"{center[0]:.4f}",
         "lon": f"{center[1]:.4f}",
         "zoom": config.zoom,
         "rangeRings": 0,
         "outlineWidth": 0,
         "mapDim": 0,
+        "hideSidebar": True,
+        "hideButtons": True,
+        "noVanish": True,
     }
-    flags = ("hideSidebar", "hideButtons", "noVanish")
-    return f"{config.url}?{urlencode(params)}&{'&'.join(flags)}"
+    toggles = _default_toggles(config)
+    toggles.update(config.toggles)
+    if toggles:
+        params["toggles"] = ",".join(f"{k},{int(bool(v))}" for k, v in toggles.items())
+    params.update(config.url_params)
+    parts = []
+    for key, value in params.items():
+        if value is False or value is None:
+            continue
+        parts.append(key if value is True else urlencode({key: value}))
+    return f"{config.url}?{'&'.join(parts)}"
+
+
+def _default_toggles(config: RenderConfig) -> dict[str, bool]:
+    """Settings-menu toggles the renderer sets before the user's own."""
+    toggles: dict[str, bool] = {}
+    if config.info_panel:
+        toggles.update(planespottersAPI=False, planespottingAPI=True)
+    return toggles
 
 
 class Tar1090Renderer:
@@ -206,7 +253,11 @@ class Tar1090Renderer:
         if self.config.show_receiver:
             self._page.evaluate(_SHOW_LAYERS_JS, ["Site position", "Range rings"])
             self._page.evaluate(_DRAW_RINGS_JS, ring_distances_mi(self.config))
-        self._page.add_style_tag(content=_HIDE_PANELS_CSS)
+        if self.config.labels_selected_only:
+            self._page.evaluate(_SELECTED_LABELS_ONLY_JS)
+        self._page.add_style_tag(content=_HIDE_SIDEBAR_CSS)
+        if not self.config.info_panel:
+            self._page.add_style_tag(content=_HIDE_INFOBLOCK_CSS)
         self._opened_at = time.monotonic()
         log.info("tar1090 page open at %s", page_url(self.config, self.center))
 

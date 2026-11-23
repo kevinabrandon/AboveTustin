@@ -128,11 +128,15 @@ def parse(text: str) -> Config:
                 center=render.choice("center", CENTER_MODES, "grid"),
                 grid_deg=render.number("grid_deg", 0.1),
                 show_receiver=render.boolean("show_receiver", False),
+                info_panel=render.boolean("info_panel", False),
+                labels_selected_only=render.boolean("labels_selected_only", False),
                 ring_distances_m=tuple(
                     render.quantities("ring_distances", "m", ["1 mi", "2 mi", "5 mi"])
                 ),
                 browser_channel=render.string("browser_channel", "chrome"),
                 reload_after_s=render.quantity("reload_after", "s", "1 h"),
+                url_params=render.scalars("tar1090"),
+                toggles={k: bool(v) for k, v in render.scalars("toggles", bool).items()},
             )
             if render.boolean("enabled", True)
             else None
@@ -302,6 +306,17 @@ class _Section:
         if isinstance(value, bool) or not isinstance(value, int):
             raise ConfigError(f"[{self.name}] {key} must be a whole number")
         return value
+
+    def scalars(self, key: str, kind: type | tuple[type, ...] = (str, int, float, bool)) -> dict:
+        """A sub-table of plain values, e.g. ``[render.tar1090]``; empty when absent."""
+        table = self.table.get(key, {})
+        if not isinstance(table, dict):
+            raise ConfigError(f"[{self.name}] {key} must be a table ([{self.name}.{key}])")
+        for k, v in table.items():
+            if not isinstance(v, kind) or isinstance(v, dict | list):
+                want = "true/false" if kind is bool else "strings, numbers or true/false"
+                raise ConfigError(f"[{self.name}.{key}] {k} must be {want}")
+        return dict(table)
 
     def quantity(self, key: str, like: str, default: str | None = None) -> float:
         """A string with units, returned as an SI magnitude."""

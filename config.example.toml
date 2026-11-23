@@ -48,6 +48,13 @@ center = "grid"
 grid_deg = 0.1
 # Draw the receiver marker and distance rings around it.
 show_receiver = false
+# Keep tar1090's selected-aircraft panel in the image: registration, type,
+# route, its distance from the receiver, and a photo from planespotting.be
+# when that site has one. (planespotters.net does not serve automated
+# clients, so it stays off.)
+info_panel = false
+# With labels on (enableLabels below), label only the sighted aircraft.
+labels_selected_only = false
 ring_distances = ["1 mi", "2 mi", "5 mi"]
 # Playwright browser channel: "chrome" or "msedge" for an installed browser,
 # "" for the chromium that `playwright install chromium` downloads.
@@ -55,6 +62,19 @@ browser_channel = "chrome"
 # The page is reopened this often, while nothing is tracked, to bound its memory.
 reload_after = "1 h"
 image_dir = "~/.local/share/abovetustin/images"
+
+# Anything tar1090 takes on its URL is passed through as written and wins over
+# the defaults above. true means a bare flag. For example:
+#   enableLabels = true         aircraft labels (tar1090's L key)
+#   extendedLabels = 2          label detail, 0 to 3 (the O key, pressed that many times)
+#   baseMap = "esri"            osm, osm_de, esri, esri_gray, esri_streets, mapbox_dark, ...
+#   overlays = "noaa_radar"     comma-separated: nexrad, noaa_radar, noaa_sat, rainviewer_radar, tfrs, sua, openaip
+#   mapDim = 0.45               how much to dim the base map, with the MapDim toggle below
+[render.tar1090]
+
+# Switches from tar1090's settings menu (the key names it stores them under):
+#   MapDim, useRouteAPI, darkMode, darkerColors, ColoredTrails, monochromeMarkers, ...
+[render.toggles]
 
 [post]
 # The text of a post. Placeholders are ${name}; the full list is in
