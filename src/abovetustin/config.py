@@ -129,6 +129,7 @@ def parse(text: str) -> Config:
                 grid_deg=render.number("grid_deg", 0.1),
                 show_receiver=render.boolean("show_receiver", False),
                 info_panel=render.boolean("info_panel", False),
+                labels_selected_only=render.boolean("labels_selected_only", False),
                 ring_distances_m=tuple(
                     render.quantities("ring_distances", "m", ["1 mi", "2 mi", "5 mi"])
                 ),

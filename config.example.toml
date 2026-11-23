@@ -53,6 +53,8 @@ show_receiver = false
 # when that site has one. (planespotters.net does not serve automated
 # clients, so it stays off.)
 info_panel = false
+# With labels on (enableLabels below), label only the sighted aircraft.
+labels_selected_only = false
 ring_distances = ["1 mi", "2 mi", "5 mi"]
 # Playwright browser channel: "chrome" or "msedge" for an installed browser,
 # "" for the chromium that `playwright install chromium` downloads.

@@ -27,6 +27,10 @@ it is switched on and supplies the photo when it has one.
 * ``track``: the whole trail, fitted to the frame, zoomed in no further
   than ``zoom``.
 
+``labels_selected_only`` uses tar1090's multi-select mode, in which only
+selected aircraft carry a label, so with labels enabled the sighted
+aircraft is labelled and the rest are not.
+
 Everything tar1090 can do from its URL is passed through: ``url_params``
 are added to the page URL (``enableLabels``, ``baseMap``, ``overlays``,
 ``mapDim`` and so on; ``true`` means a bare flag) and override the
@@ -97,6 +101,7 @@ _FIT_TRACK_JS = """([hex, lat, lon, zoom, pad]) => {
     return segs.length;
 }"""
 _DESELECT_JS = "() => deselectAllPlanes()"
+_SELECTED_LABELS_ONLY_JS = "() => toggleMultiSelect('on')"
 
 
 class RenderError(Exception):
@@ -124,6 +129,8 @@ class RenderConfig:
     #: Leave tar1090's selected-aircraft panel (photo, registration, distance
     #: from the receiver, ...) visible in the image.
     info_panel: bool = False
+    #: With labels enabled (enableLabels in url_params), label only the sighted aircraft.
+    labels_selected_only: bool = False
     ring_distances_m: tuple[float, ...] = DEFAULT_RING_DISTANCES_M
     #: Playwright browser channel: "chrome", "msedge", or "" for its own chromium.
     browser_channel: str = "chrome"
@@ -246,6 +253,8 @@ class Tar1090Renderer:
         if self.config.show_receiver:
             self._page.evaluate(_SHOW_LAYERS_JS, ["Site position", "Range rings"])
             self._page.evaluate(_DRAW_RINGS_JS, ring_distances_mi(self.config))
+        if self.config.labels_selected_only:
+            self._page.evaluate(_SELECTED_LABELS_ONLY_JS)
         self._page.add_style_tag(content=_HIDE_SIDEBAR_CSS)
         if not self.config.info_panel:
             self._page.add_style_tag(content=_HIDE_INFOBLOCK_CSS)

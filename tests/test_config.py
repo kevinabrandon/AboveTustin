@@ -137,6 +137,12 @@ def test_render_centred_on_the_receiver_with_rings():
     assert cfg.render.ring_distances_m == (2000.0,)
 
 
+def test_render_labels_selected_only():
+    assert config.parse(MINIMAL).render.labels_selected_only is False
+    cfg = config.parse(MINIMAL + "[render]\nlabels_selected_only = true\n")
+    assert cfg.render.labels_selected_only is True
+
+
 def test_render_info_panel():
     assert config.parse(MINIMAL).render.info_panel is False
     assert config.parse(MINIMAL + "[render]\ninfo_panel = true\n").render.info_panel is True
