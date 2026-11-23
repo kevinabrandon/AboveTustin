@@ -56,6 +56,19 @@ browser_channel = "chrome"
 reload_after = "1 h"
 image_dir = "~/.local/share/abovetustin/images"
 
+# Anything tar1090 takes on its URL is passed through as written and wins over
+# the defaults above. true means a bare flag. For example:
+#   enableLabels = true         aircraft labels (tar1090's L key)
+#   extendedLabels = 2          label detail, 0 to 3 (the O key, pressed that many times)
+#   baseMap = "esri"            osm, osm_de, esri, esri_gray, esri_streets, mapbox_dark, ...
+#   overlays = "noaa_radar"     comma-separated: nexrad, noaa_radar, noaa_sat, rainviewer_radar, tfrs, sua, openaip
+#   mapDim = 0.45               how much to dim the base map, with the MapDim toggle below
+[render.tar1090]
+
+# Switches from tar1090's settings menu (the key names it stores them under):
+#   MapDim, useRouteAPI, darkMode, darkerColors, ColoredTrails, monochromeMarkers, ...
+[render.toggles]
+
 [post]
 # The text of a post. Placeholders are ${name}; the full list is in
 # src/abovetustin/post/template.py. This is the v1 template.
