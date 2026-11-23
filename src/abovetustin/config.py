@@ -128,6 +128,7 @@ def parse(text: str) -> Config:
                 center=render.choice("center", CENTER_MODES, "grid"),
                 grid_deg=render.number("grid_deg", 0.1),
                 show_receiver=render.boolean("show_receiver", False),
+                info_panel=render.boolean("info_panel", False),
                 ring_distances_m=tuple(
                     render.quantities("ring_distances", "m", ["1 mi", "2 mi", "5 mi"])
                 ),

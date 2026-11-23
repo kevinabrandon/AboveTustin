@@ -48,6 +48,11 @@ center = "grid"
 grid_deg = 0.1
 # Draw the receiver marker and distance rings around it.
 show_receiver = false
+# Keep tar1090's selected-aircraft panel in the image: registration, type,
+# route, its distance from the receiver, and a photo from planespotting.be
+# when that site has one. (planespotters.net does not serve automated
+# clients, so it stays off.)
+info_panel = false
 ring_distances = ["1 mi", "2 mi", "5 mi"]
 # Playwright browser channel: "chrome" or "msedge" for an installed browser,
 # "" for the chromium that `playwright install chromium` downloads.

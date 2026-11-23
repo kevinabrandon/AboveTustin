@@ -60,6 +60,16 @@ class TestPageUrl:
         assert "mapDim=0.45" in url and "mapDim=0&" not in url
         assert "noVanish" not in url
 
+    def test_info_panel_picks_the_photo_source_that_serves_bots(self):
+        config = tar1090.RenderConfig(url=CONFIG.url, info_panel=True)
+        url = tar1090.page_url(config, (33.7, -117.8))
+        assert "toggles=planespottersAPI%2C0%2CplanespottingAPI%2C1" in url
+        # and a user toggle still overrides
+        config = tar1090.RenderConfig(
+            url=CONFIG.url, info_panel=True, toggles={"planespottersAPI": True}
+        )
+        assert "planespottersAPI%2C1" in tar1090.page_url(config, (33.7, -117.8))
+
     def test_toggles(self):
         config = tar1090.RenderConfig(
             url=CONFIG.url, toggles={"MapDim": True, "useRouteAPI": True, "darkMode": False}
