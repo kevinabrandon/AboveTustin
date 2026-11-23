@@ -60,15 +60,27 @@ A v1 post looked like this:
 - [ ] Default alarm zone tuned against real traffic
 - [x] Map image of the track
 - [x] Bluesky posts
-- [ ] Runs as a service and survives a reboot
+- [x] Runs as a service and survives a reboot
 - [ ] Route lookup: where it came from, where it is going
 - [ ] X posts
 
 ## Running it
 
-Not yet. When v2 runs end to end this section will cover installing readsb and
-tar1090 (wiedehopf's install scripts work on a Pi or any Linux box), writing the
-config, a dry-run mode that logs sightings without posting, and a systemd unit.
+You need readsb and tar1090 serving `aircraft.json` (wiedehopf's install scripts
+set both up on a Pi or any Linux box), Google Chrome for the map images, and a
+Bluesky account with an app password.
+
+```sh
+uv sync
+cp config.example.toml ~/.config/abovetustin/config.toml   # then set the receiver position
+uv run abovetustin check              # config, receiver and login
+uv run abovetustin run --dry-run      # log and render sightings, post nothing
+uv run abovetustin run                # post them
+```
+
+`deploy/README.md` covers running it as a systemd service that starts at boot and
+restarts on failure. `abovetustin compose` shows what recent sightings would post
+as, for tuning the template and rules.
 
 ## Development
 
