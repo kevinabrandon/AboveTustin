@@ -1,0 +1,32 @@
+# AboveTustin as a systemd user service.
+#
+# Install:
+#   mkdir -p ~/.config/systemd/user
+#   cp deploy/abovetustin.service ~/.config/systemd/user/
+#   edit ExecStart below to point at your checkout's virtual environment
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now abovetustin
+#   loginctl enable-linger $USER     # keep it running when you are not logged in
+#
+# Logs: journalctl --user -u abovetustin -f
+
+[Unit]
+Description=AboveTustin ADS-B overflight bot
+Documentation=https://github.com/kevinabrandon/AboveTustin
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# The console script inside the project's virtual environment (uv sync creates it).
+ExecStart=%h/src/AboveTustin/.venv/bin/abovetustin run
+# Check the config, the receiver and the Bluesky login before starting the loop.
+ExecStartPre=%h/src/AboveTustin/.venv/bin/abovetustin check
+Restart=on-failure
+RestartSec=15
+# readsb may still be coming up after a reboot; keep retrying.
+StartLimitIntervalSec=0
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target
