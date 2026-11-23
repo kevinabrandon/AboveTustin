@@ -52,6 +52,10 @@ ring_distances = ["1 mi", "2 mi", "5 mi"]
 # Playwright browser channel: "chrome" or "msedge" for an installed browser,
 # "" for the chromium that `playwright install chromium` downloads.
 browser_channel = "chrome"
+# Aircraft labels on the map: tar1090's L key, and how many times its O key is
+# pressed (0 to 3) to add registration, type, speed, altitude and callsign.
+labels = false
+label_detail = 0
 # The page is reopened this often, while nothing is tracked, to bound its memory.
 reload_after = "1 h"
 image_dir = "~/.local/share/abovetustin/images"

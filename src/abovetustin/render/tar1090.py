@@ -22,6 +22,10 @@ suppressed; ``show_receiver = true`` puts the marker and rings back, at
 * ``aircraft``: the aircraft at its closest approach.
 * ``track``: the whole trail, fitted to the frame, zoomed in no further
   than ``zoom``.
+
+``labels`` and ``label_detail`` are tar1090's L and O keys: labels on or
+off, and how many times O was pressed (0 to 3) to extend them with
+registration, type, speed, altitude and callsign.
 """
 
 from __future__ import annotations
@@ -114,6 +118,9 @@ class RenderConfig:
     browser_channel: str = "chrome"
     #: Reload the page this often, when nothing is being tracked, to keep its memory in check.
     reload_after_s: float = 3600.0
+    #: Aircraft labels on the map (tar1090's L key) and their detail level (the O key, 0-3).
+    labels: bool = False
+    label_detail: int = 0
 
 
 def snap(position: LatLonDeg, grid_deg: float) -> LatLonDeg:
@@ -151,7 +158,10 @@ def page_url(config: RenderConfig, center: LatLonDeg) -> str:
         "outlineWidth": 0,
         "mapDim": 0,
     }
-    flags = ("hideSidebar", "hideButtons", "noVanish")
+    flags = ["hideSidebar", "hideButtons", "noVanish"]
+    if config.labels:
+        flags.append("enableLabels")
+        params["extendedLabels"] = config.label_detail
     return f"{config.url}?{urlencode(params)}&{'&'.join(flags)}"
 
 

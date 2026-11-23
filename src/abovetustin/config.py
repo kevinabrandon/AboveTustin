@@ -133,6 +133,8 @@ def parse(text: str) -> Config:
                 ),
                 browser_channel=render.string("browser_channel", "chrome"),
                 reload_after_s=render.quantity("reload_after", "s", "1 h"),
+                labels=render.boolean("labels", False),
+                label_detail=render.integer_in("label_detail", 0, 3, 0),
             )
             if render.boolean("enabled", True)
             else None
@@ -301,6 +303,12 @@ class _Section:
         value = self._get(key, default)
         if isinstance(value, bool) or not isinstance(value, int):
             raise ConfigError(f"[{self.name}] {key} must be a whole number")
+        return value
+
+    def integer_in(self, key: str, low: int, high: int, default: int) -> int:
+        value = self.integer(key, default)
+        if not low <= value <= high:
+            raise ConfigError(f"[{self.name}] {key} must be between {low} and {high}")
         return value
 
     def quantity(self, key: str, like: str, default: str | None = None) -> float:

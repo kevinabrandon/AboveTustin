@@ -137,6 +137,13 @@ def test_render_centred_on_the_receiver_with_rings():
     assert cfg.render.ring_distances_m == (2000.0,)
 
 
+def test_render_labels():
+    cfg = config.parse(MINIMAL + "[render]\nlabels = true\nlabel_detail = 2\n")
+    assert cfg.render is not None and cfg.render.labels and cfg.render.label_detail == 2
+    with pytest.raises(config.ConfigError, match="label_detail must be between 0 and 3"):
+        config.parse(MINIMAL + "[render]\nlabel_detail = 4\n")
+
+
 def test_render_bad_centre_and_rings():
     with pytest.raises(
         config.ConfigError, match="center must be one of grid, receiver, aircraft, track"

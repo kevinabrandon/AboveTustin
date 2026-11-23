@@ -36,6 +36,15 @@ class TestPageUrl:
         for flag in ("hideSidebar", "hideButtons", "noVanish"):
             assert flag in url
 
+    def test_labels_off_by_default(self):
+        url = tar1090.page_url(CONFIG, (33.7, -117.8))
+        assert "enableLabels" not in url and "extendedLabels" not in url
+
+    def test_labels_with_detail(self):
+        config = tar1090.RenderConfig(url=CONFIG.url, labels=True, label_detail=2)
+        url = tar1090.page_url(config, (33.7, -117.8))
+        assert "enableLabels" in url and "extendedLabels=2" in url
+
     def test_receiver_layers_named(self):
         assert "Site position" in tar1090.RECEIVER_LAYERS
         assert "Range rings" in tar1090.RECEIVER_LAYERS
